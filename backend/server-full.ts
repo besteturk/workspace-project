@@ -5,14 +5,17 @@ import { testConnection, initializeDatabase } from './config/database';
 import authRoutes from './routes/auth';
 import noteRoutes from './routes/notes';
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// CORS configuration
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
   credentials: true,
@@ -20,6 +23,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -28,9 +32,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', noteRoutes);
 
+// Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
   
@@ -41,10 +47,12 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.use((req, res) => {
+// 404 handler
+app.use('*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
+// Initialize database and start server
 const startServer = async () => {
   try {
     console.log('🔄 Initializing database connection...');
@@ -64,10 +72,9 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
       console.log(`✅ Server running on http://localhost:${PORT}`);
-      console.log(`📚 API Endpoints:`);
+      console.log(`📚 API Documentation:`);
       console.log(`   Health: GET /health`);
-      console.log(`   Register: POST /api/auth/register`);
-      console.log(`   Login: POST /api/auth/login`);
+      console.log(`   Auth: POST /api/auth/register, /api/auth/login`);
       console.log(`   Notes: GET|POST|PUT|DELETE /api/notes/*`);
     });
 
