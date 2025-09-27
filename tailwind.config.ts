@@ -31,6 +31,10 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -47,6 +51,32 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Thia Custom Colors
+        cosmic: {
+          blue: "hsl(var(--cosmic-blue))",
+        },
+        nebula: {
+          purple: "hsl(var(--nebula-purple))",
+        },
+        starlight: {
+          gold: "hsl(var(--starlight-gold))",
+        },
+        aurora: {
+          green: "hsl(var(--aurora-green))",
+        },
+        solar: {
+          red: "hsl(var(--solar-flare-red))",
+        },
+        space: {
+          mist: "hsl(var(--space-mist))",
+        },
+        surface: {
+          white: "hsl(var(--surface-white))",
+        },
+        text: {
+          primary: "hsl(var(--text-primary))",
+          secondary: "hsl(var(--text-secondary))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -57,6 +87,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      backgroundImage: {
+        'gradient-cosmic': 'var(--gradient-cosmic)',
+        'gradient-aurora': 'var(--gradient-aurora)',
+        'gradient-space': 'var(--gradient-space)',
+      },
+      boxShadow: {
+        'cosmic': 'var(--shadow-cosmic)',
+        'nebula': 'var(--shadow-nebula)',
+        'card': 'var(--shadow-card)',
+        'elevated': 'var(--shadow-elevated)',
       },
       borderRadius: {
         lg: "var(--radius)",
