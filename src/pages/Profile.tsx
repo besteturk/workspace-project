@@ -165,7 +165,7 @@ const Profile = () => {
                   Recent Contributions
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent>
                 <div className="space-y-4">
                   {recentContributions.map((contribution) => (
                     <div key={contribution.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
