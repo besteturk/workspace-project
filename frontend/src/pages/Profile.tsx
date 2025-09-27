@@ -226,36 +226,6 @@ const Profile = () => {
                         </div>
                      </CardContent>
                   </Card>
-
-                  {/* Activity Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                     <Card className="shadow-card">
-                        <CardContent className="p-6">
-                           <div className="flex items-center gap-3">
-                              <div className="p-3 bg-primary/10 rounded-full">
-                                 <FileText className="w-6 h-6 text-primary" />
-                              </div>
-                              <div>
-                                 <p className="text-2xl font-bold text-foreground">24</p>
-                                 <p className="text-sm text-muted-foreground">Pages Created</p>
-                              </div>
-                           </div>
-                        </CardContent>
-                     </Card>
-                     <Card className="shadow-card">
-                        <CardContent className="p-6">
-                           <div className="flex items-center gap-3">
-                              <div className="p-3 bg-secondary/10 rounded-full">
-                                 <Clock className="w-6 h-6 text-secondary" />
-                              </div>
-                              <div>
-                                 <p className="text-2xl font-bold text-foreground">156</p>
-                                 <p className="text-sm text-muted-foreground">Hours This Month</p>
-                              </div>
-                           </div>
-                        </CardContent>
-                     </Card>
-                  </div>
                </div>
             </div>
          </div>
