@@ -129,7 +129,7 @@ const Teams = () => {
                       <p className="text-sm text-muted-foreground">{member.email}</p>
                       <div className="flex gap-1 mt-2">
                         {member.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="bg-secondary/10 text-secondary hover:bg-secondary/20 text-xs">
+                          <Badge key={index} className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs">
                             {tag}
                           </Badge>
                         ))}

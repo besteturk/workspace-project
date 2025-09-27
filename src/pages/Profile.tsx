@@ -146,7 +146,7 @@ const Profile = () => {
                   <h3 className="font-medium text-foreground mb-3">Tags</h3>
                   <div className="flex flex-wrap gap-2">
                     {tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="bg-secondary/10 text-secondary hover:bg-secondary/20">
+                      <Badge key={index} className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
                         {tag}
                       </Badge>
                     ))}

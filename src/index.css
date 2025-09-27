@@ -36,8 +36,8 @@ All colors MUST be HSL.
     --success: 151 100% 45%; /* Aurora Green #00E676 */
     --success-foreground: 0 0% 100%;
 
-    --border: 220 40% 90%;
-    --input: 220 40% 90%;
+    --border: 217 15% 85%; /* #D1D5DB */
+    --input: 217 15% 85%; /* #D1D5DB */
     --ring: 232 99% 62%;
 
     --radius: 0.75rem;

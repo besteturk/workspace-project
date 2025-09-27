@@ -13,9 +13,9 @@ const Calendar = () => {
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
 
   const events = [
-    { id: 1, title: "Team Standup", time: "09:00", duration: 30, type: "meeting", color: "bg-primary" },
-    { id: 2, title: "Design Review", time: "14:00", duration: 60, type: "review", color: "bg-secondary" },
-    { id: 3, title: "Project Planning", time: "16:00", duration: 90, type: "planning", color: "bg-accent" },
+    { id: 1, title: "Team Standup", time: "09:00", duration: 30, type: "assigned", color: "bg-primary" },
+    { id: 2, title: "Design Review", time: "14:00", duration: 60, type: "default", color: "bg-secondary" },
+    { id: 3, title: "Project Planning", time: "16:00", duration: 90, type: "highlighted", color: "bg-accent" },
   ];
 
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -143,7 +143,7 @@ const Calendar = () => {
                     <div className="space-y-12">
                       {timeSlots.map((time, timeIndex) => (
                         <div key={time} className="h-12 border border-border rounded relative">
-                          {dayIndex === 2 && timeIndex === 1 && (
+                           {dayIndex === 2 && timeIndex === 1 && (
                             <div className="absolute inset-x-1 top-1 bg-primary text-primary-foreground rounded text-xs p-1">
                               Team Standup
                             </div>
