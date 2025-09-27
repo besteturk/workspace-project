@@ -114,7 +114,7 @@ const Calendar = () => {
               {viewMode === "week" ? "Week View" : "Month View"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             {viewMode === "week" ? (
               <div className="grid grid-cols-8 gap-1">
                 {/* Time column */}
@@ -196,7 +196,7 @@ const Calendar = () => {
                 Today's Events
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="space-y-3">
                 {events.map((event) => (
                   <div key={event.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
@@ -223,7 +223,7 @@ const Calendar = () => {
                 Team Availability
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="font-medium text-foreground">Alice Johnson</span>

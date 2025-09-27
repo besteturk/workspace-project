@@ -48,7 +48,7 @@ const Dashboard = () => {
                 Recent Pages
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6">
               {recentPages.map((page) => (
                 <div key={page.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors cursor-pointer">
                   <div>
@@ -73,7 +73,7 @@ const Dashboard = () => {
                 Team Activity
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6">
               {teamActivity.map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full">

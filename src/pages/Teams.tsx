@@ -83,7 +83,7 @@ const Teams = () => {
               Team Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6">
             <div>
               <h2 className="text-2xl font-bold text-foreground mb-2">{teamInfo.name}</h2>
               <p className="text-muted-foreground">{teamInfo.description}</p>
@@ -111,7 +111,7 @@ const Teams = () => {
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">

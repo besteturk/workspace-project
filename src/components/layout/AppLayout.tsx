@@ -43,7 +43,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     <div className="min-h-screen bg-background">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 p-4">
+        <div className="w-64 p-6">
           <Card className="h-full shadow-card">
             <div className="p-6">
               {/* Logo */}

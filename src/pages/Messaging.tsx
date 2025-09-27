@@ -61,7 +61,7 @@ const Messaging = () => {
     <AppLayout>
       <div className="flex h-full gap-6">
         {/* Users List */}
-        <div className="w-80">
+        <div className="w-64">
           <Card className="shadow-card h-full">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
@@ -73,8 +73,8 @@ const Messaging = () => {
                 <Input placeholder="Search conversations..." className="pl-10" />
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
-              <div className="space-y-2">
+            <CardContent className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-3">
                 {users.map((user) => (
                   <div
                     key={user.id}

@@ -32,7 +32,7 @@ const Pages = () => {
     <AppLayout>
       <div className="flex h-full gap-6">
         {/* Left Sidebar - Pages List */}
-        <div className="w-80 flex flex-col">
+        <div className="w-64 flex flex-col">
           <Card className="shadow-card h-full">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center justify-between">
@@ -54,8 +54,8 @@ const Pages = () => {
                 />
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
-              <div className="space-y-2">
+            <CardContent className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-3">
                 {filteredPages.map((page) => (
                   <div
                     key={page.id}
