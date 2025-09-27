@@ -9,8 +9,8 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Thia Space-Inspired Theme */
-    --background: 220 40% 97%; /* Space Mist #F4F6FA */
-    --foreground: 0 0% 10%; /* Text Primary #1A1A1A */
+    --background: 220 20% 96%; /* Slightly cooler space mist */
+    --foreground: 220 12% 12%; /* Slightly desaturated dark for better contrast */
 
     --card: 0 0% 100%; /* Surface White #FFFFFF */
     --card-foreground: 0 0% 10%;
@@ -24,11 +24,11 @@ All colors MUST be HSL.
     --secondary: 250 100% 69%; /* Nebula Purple #7B61FF */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 40% 97%;
-    --muted-foreground: 240 8% 38%; /* Text Secondary #5C5C66 */
+    --muted: 220 18% 94%; /* Muted background shifted toward blue tint */
+    --muted-foreground: 234 8% 42%; /* Text Secondary #5C5C66 */
 
-    --accent: 48 100% 66%; /* Starlight Gold #FFD54F */
-    --accent-foreground: 0 0% 10%;
+    --accent: 220 18% 94%; /* Starlight Gold #FFD54F */
+    --accent-foreground: 234 8% 42%;
 
     --destructive: 0 100% 66%; /* Solar Flare Red #FF5252 */
     --destructive-foreground: 0 0% 100%;
@@ -68,19 +68,15 @@ All colors MUST be HSL.
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --sidebar-background: 0 0% 98%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
+  /* Sidebar tuned toward primary hue for harmony */
+  --sidebar-background: 226 14% 96%;
+  --sidebar-foreground: 230 8% 18%;
+  --sidebar-primary: 232 99% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 232 24% 92%;
+  --sidebar-accent-foreground: 232 99% 62%;
+  --sidebar-border: 224 12% 92%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
