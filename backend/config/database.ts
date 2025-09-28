@@ -1,36 +1,81 @@
 import mysql from 'mysql2/promise';
+import type { Pool, PoolOptions } from 'mysql2/promise';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbConfig = {
+const parseBoolean = (value?: string | null) => {
+  if (!value) return false;
+  return /^(1|true|yes|on)$/i.test(value.trim());
+};
+
+export const isDatabaseDisabled = parseBoolean(process.env.DB_DISABLE);
+
+const dbConfig: PoolOptions = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306'),
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD,
+  password: process.env.DB_PASSWORD ?? '',
   database: process.env.DB_NAME || 'notes_app',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  reconnect: true,
   charset: 'utf8mb4'
 };
 
-export const pool = mysql.createPool(dbConfig);
+const createDisabledPool = (): Pool => {
+  const message = 'Database access attempted while DB_DISABLE=true';
+
+  const handler: ProxyHandler<Record<string, unknown>> = {
+    get: (_target, prop) => {
+      if (prop === 'disabled') {
+        return true;
+      }
+
+      if (prop === 'then') {
+        return undefined;
+      }
+
+      return () => {
+        throw new Error(message);
+      };
+    },
+  };
+
+  return new Proxy({}, handler) as unknown as Pool;
+};
+
+if (!process.env.DB_PASSWORD && !isDatabaseDisabled) {
+  console.warn('[database] DB_PASSWORD is empty. Update backend/.env to match your MySQL credentials.');
+}
+
+export const pool = isDatabaseDisabled ? createDisabledPool() : mysql.createPool(dbConfig);
 
 export const testConnection = async () => {
+  if (isDatabaseDisabled) {
+    console.warn('[database] Skipping connection test because DB_DISABLE=true');
+    return true;
+  }
+
   try {
     const connection = await pool.getConnection();
     console.log('Database connected successfully');
     connection.release();
     return true;
   } catch (error: any) {
-    console.error('Database connection failed:', error.message);
+    const details = error?.code ? `${error.code} - ${error.message}` : error.message;
+    console.error('Database connection failed:', details);
+    console.error('Verify the DB_* settings in backend/.env match your MySQL credentials.');
     return false;
   }
 };
 
 export const initializeDatabase = async () => {
+  if (isDatabaseDisabled) {
+    console.warn('[database] Skipping database schema initialization because DB_DISABLE=true');
+    return true;
+  }
+
   try {
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS Users(

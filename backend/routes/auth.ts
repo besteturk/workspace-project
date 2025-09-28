@@ -4,17 +4,43 @@ import { generateToken, authenticateToken, AuthRequest } from '../middleware/aut
 import { TeamModel } from '../models/Team';
 import { EventModel } from '../models/Event';
 import { ConversationModel } from '../models/Messaging';
+import { isDatabaseDisabled } from '../config/database';
+import { isMockAuthEnabled, mockUserCredentials, mockUserProfile } from '../config/mockUser';
+
 const router = express.Router();
+
+const buildMockUserPayload = () => ({
+  user_id: mockUserProfile.user_id,
+  first_name: mockUserProfile.first_name,
+  last_name: mockUserProfile.last_name,
+  email: mockUserProfile.email,
+  pfp_url: mockUserProfile.pfp_url,
+  role: mockUserProfile.role,
+  job_title: mockUserProfile.job_title,
+  location: mockUserProfile.location,
+  bio: mockUserProfile.bio,
+});
+
+const buildMockAuthResponse = () => ({
+  message: 'Login successful (mock mode)',
+  user: buildMockUserPayload(),
+});
 
 // Register new user
 router.post('/register', async (req, res) => {
   try {
+    if (isMockAuthEnabled) {
+      return res.status(503).json({
+        error: 'Registration is disabled while DB_DISABLE=true. Disable mock mode to register real users.',
+      });
+    }
+
     const { first_name, last_name, email, password, pfp_url } = req.body;
 
     // Validate required fields
     if (!first_name || !last_name || !email || !password) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: first_name, last_name, email, password' 
+      return res.status(400).json({
+        error: 'Missing required fields: first_name, last_name, email, password',
       });
     }
 
@@ -42,7 +68,7 @@ router.post('/register', async (req, res) => {
       email,
       password,
       pfp_url,
-      role: 'user'
+      role: 'user',
     });
 
     if (!userId) {
@@ -51,7 +77,6 @@ router.post('/register', async (req, res) => {
 
     // Get created user (without password)
     const newUser = await UserModel.findById(userId);
-    
     if (!newUser) {
       return res.status(500).json({ error: 'User created but could not be retrieved' });
     }
@@ -60,7 +85,7 @@ router.post('/register', async (req, res) => {
     const token = generateToken({
       user_id: newUser.user_id,
       email: newUser.email,
-      role: newUser.role
+      role: newUser.role,
     });
 
     const team = await TeamModel.ensureTeamWithSamples(newUser.user_id);
@@ -80,11 +105,10 @@ router.post('/register', async (req, res) => {
         role: newUser.role,
         job_title: newUser.job_title,
         location: newUser.location,
-        bio: newUser.bio
+        bio: newUser.bio,
       },
-      token
+      token,
     });
-
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -98,6 +122,23 @@ router.post('/login', async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (isMockAuthEnabled) {
+      if (email === mockUserCredentials.email && password === mockUserCredentials.password) {
+        const token = generateToken({
+          user_id: mockUserProfile.user_id,
+          email: mockUserProfile.email,
+          role: mockUserProfile.role,
+        });
+
+        return res.json({
+          ...buildMockAuthResponse(),
+          token,
+        });
+      }
+
+      return res.status(401).json({ error: 'Invalid email or password (mock mode)' });
     }
 
     // Find user by email
@@ -116,13 +157,15 @@ router.post('/login', async (req, res) => {
     const token = generateToken({
       user_id: user.user_id,
       email: user.email,
-      role: user.role
+      role: user.role,
     });
 
-    const team = await TeamModel.ensureTeamWithSamples(user.user_id);
-    if (team) {
-      await EventModel.ensureSampleEvents(team.team_id, user.user_id);
-      await ConversationModel.ensureDefaultConversation(team.team_id, user.user_id);
+    if (!isDatabaseDisabled) {
+      const team = await TeamModel.ensureTeamWithSamples(user.user_id);
+      if (team) {
+        await EventModel.ensureSampleEvents(team.team_id, user.user_id);
+        await ConversationModel.ensureDefaultConversation(team.team_id, user.user_id);
+      }
     }
 
     res.json({
@@ -136,11 +179,10 @@ router.post('/login', async (req, res) => {
         role: user.role,
         job_title: user.job_title,
         location: user.location,
-        bio: user.bio
+        bio: user.bio,
       },
-      token
+      token,
     });
-
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -150,8 +192,17 @@ router.post('/login', async (req, res) => {
 // Get current user profile
 router.get('/profile', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    if (isMockAuthEnabled) {
+      return res.json({
+        user: {
+          ...buildMockUserPayload(),
+          created_at: new Date(),
+        },
+      });
+    }
+
     const user = await UserModel.findById(req.user!.user_id);
-    
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -167,12 +218,24 @@ router.get('/profile', authenticateToken, async (req: AuthRequest, res) => {
         job_title: user.job_title,
         location: user.location,
         bio: user.bio,
-        created_at: user.created_at
-      }
+        created_at: user.created_at,
+      },
     });
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Update current user profile
 router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    if (isMockAuthEnabled) {
+      return res.status(503).json({
+        error: 'Profile updates are disabled while DB_DISABLE=true. Disable mock mode to persist changes.',
+      });
+    }
+
     const userId = req.user!.user_id;
     const { first_name, last_name, pfp_url, job_title, location, bio } = req.body;
 
@@ -182,7 +245,7 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
       pfp_url,
       job_title,
       location,
-      bio
+      bio,
     });
 
     if (!success) {
@@ -206,18 +269,11 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
         job_title: user.job_title,
         location: user.location,
         bio: user.bio,
-        created_at: user.created_at
-      }
+        created_at: user.created_at,
+      },
     });
-
   } catch (error) {
     console.error('Profile update error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-  } catch (error) {
-    console.error('Profile fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

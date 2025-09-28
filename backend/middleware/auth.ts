@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { UserModel } from '../models/User';
+import { isMockAuthEnabled, mockUserProfile } from '../config/mockUser';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -20,7 +21,17 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    
+
+    if (isMockAuthEnabled) {
+      req.user = {
+        user_id: decoded.user_id ?? mockUserProfile.user_id,
+        email: decoded.email ?? mockUserProfile.email,
+        role: decoded.role === 'admin' ? 'admin' : mockUserProfile.role,
+      };
+
+      return next();
+    }
+
     // Verify user still exists
     const user = await UserModel.findById(decoded.user_id);
     if (!user) {
