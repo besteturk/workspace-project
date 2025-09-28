@@ -124,8 +124,8 @@ const Pages = () => {
                            <Plus className="w-4 h-4" />
                         </Button>
                      </CardTitle>
-                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                     <div className="relative pt-2">
+                        <Search className="absolute mt-1 left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                            placeholder="Search pages..."
                            value={searchTerm}
@@ -137,13 +137,13 @@ const Pages = () => {
                   <CardContent className="min-h-0 flex-1 overflow-y-auto">
                      <div className="space-y-2 pr-1">
                         {loading ? (
-                           <p className="text-sm text-muted-foreground text-center">
+                           <p className="text-sm text-muted-foreground text-center pt-4">
                               Loading pages...
                            </p>
                         ) : error ? (
-                           <p className="text-sm text-destructive text-center">{error}</p>
+                           <p className="text-sm text-destructive text-center pt-4">{error}</p>
                         ) : filteredPages.length === 0 ? (
-                           <p className="text-sm text-muted-foreground text-center">
+                           <p className="text-sm text-muted-foreground text-center pt-4">
                               No pages found.
                            </p>
                         ) : (
@@ -165,11 +165,10 @@ const Pages = () => {
                               return (
                                  <div
                                     key={page.note_id}
-                                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                                       isSelected
-                                          ? "bg-primary/10 border border-primary/20"
-                                          : "hover:bg-muted/50"
-                                    }`}
+                                    className={`p-3 rounded-lg cursor-pointer transition-colors ${isSelected
+                                       ? "bg-primary/10 border border-primary/20"
+                                       : "hover:bg-muted/50"
+                                       }`}
                                     onClick={() => setSelectedPageId(page.note_id)}
                                  >
                                     <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
@@ -228,13 +227,13 @@ const Pages = () => {
                            <Clock className="w-4 h-4" />
                            {selectedNote
                               ? `Last edited ${new Intl.DateTimeFormat("en-US", {
-                                   month: "short",
-                                   day: "numeric",
-                                   hour: "2-digit",
-                                   minute: "2-digit",
-                                }).format(
-                                   new Date(selectedNote.updated_at ?? selectedNote.created_at)
-                                )}`
+                                 month: "short",
+                                 day: "numeric",
+                                 hour: "2-digit",
+                                 minute: "2-digit",
+                              }).format(
+                                 new Date(selectedNote.updated_at ?? selectedNote.created_at)
+                              )}`
                               : "Select a page to view details"}
                         </div>
                      </div>
@@ -244,7 +243,7 @@ const Pages = () => {
                {/* Editor */}
                <Card className="flex flex-1 flex-col overflow-hidden shadow-card">
                   <CardContent className="flex-1 overflow-auto p-6">
-                     <div className="min-h-[400px] rounded-lg border border-border bg-card p-6">
+                     <div className={`${selectedNote ? "border border-border" : ""} min-h-[400px] rounded-lg bg-card p-6`}>
                         {selectedNote ? (
                            <div className="space-y-4 text-foreground">
                               <h2 className="text-2xl font-bold text-foreground">

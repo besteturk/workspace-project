@@ -133,21 +133,19 @@ const Calendar = () => {
                <div className="flex flex-wrap items-center gap-3">
                   <div className="flex rounded-lg bg-muted p-1">
                      <button
-                        className={`px-3 py-1 rounded text-sm transition-colors ${
-                           viewMode === "week"
-                              ? "bg-background shadow-sm"
-                              : "hover:bg-background/50"
-                        }`}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${viewMode === "week"
+                           ? "bg-background shadow-sm"
+                           : "hover:bg-background/50"
+                           }`}
                         onClick={() => setViewMode("week")}
                      >
                         Week
                      </button>
                      <button
-                        className={`px-3 py-1 rounded text-sm transition-colors ${
-                           viewMode === "month"
-                              ? "bg-background shadow-sm"
-                              : "hover:bg-background/50"
-                        }`}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${viewMode === "month"
+                           ? "bg-background shadow-sm"
+                           : "hover:bg-background/50"
+                           }`}
                         onClick={() => setViewMode("month")}
                      >
                         Month
@@ -220,17 +218,17 @@ const Calendar = () => {
                      {viewMode === "week" ? "Week View" : "Month View"}
                   </CardTitle>
                </CardHeader>
-               <CardContent className="flex-1 overflow-x-auto">
+               <CardContent className="flex-1 overflow-x-auto pr-14">
                   <div className="min-w-[960px]">
                      {viewMode === "week" ? (
                         <div className="grid grid-cols-8 gap-2">
                            {/* Time column */}
-                           <div className="space-y-12 pl-4">
+                           <div className="grid space-y-12 place-items-center">
                               <div className="h-5" />
                               {timeSlots.map((time) => (
                                  <div
                                     key={time}
-                                    className="ml-4 h-12 text-xs text-muted-foreground"
+                                    className="h-12 text-xs text-muted-foreground"
                                  >
                                     {time}
                                  </div>
@@ -246,11 +244,10 @@ const Calendar = () => {
                                  <div className="h-8 pb-12 text-center">
                                     <div className="text-sm font-medium text-foreground">{day}</div>
                                     <div
-                                       className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs ${
-                                          dayIndex === 2
-                                             ? "bg-primary text-primary-foreground"
-                                             : "text-muted-foreground"
-                                       }`}
+                                       className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs ${dayIndex === 2
+                                          ? "bg-primary text-primary-foreground"
+                                          : "text-muted-foreground"
+                                          }`}
                                     >
                                        {18 + dayIndex}
                                     </div>

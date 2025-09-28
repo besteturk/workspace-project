@@ -134,7 +134,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                            className="w-full justify-between mb-6"
                         >
                            <span>
-                              {teamName ?? (isLoadingTeam ? "Loading team..." : "Your Team")}
+                              {teamName ?? (isLoadingTeam ? "Loading team..." : "-")}
                            </span>
                            <ChevronDown className="w-4 h-4" />
                         </Button>
@@ -154,11 +154,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                            <NavLink
                               key={item.name}
                               to={item.href}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                 isActive(item.href)
+                              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(item.href)
                                     ? "bg-primary text-primary-foreground"
                                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                              }`}
+                                 }`}
                            >
                               <Icon className="w-4 h-4" />
                               {item.name}
@@ -185,7 +184,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                                     <p className="text-sm font-medium text-foreground">
                                        {user
                                           ? `${user.first_name} ${user.last_name}`.trim() ||
-                                            user.email
+                                          user.email
                                           : "Guest"}
                                     </p>
                                     <p className="text-xs text-muted-foreground">

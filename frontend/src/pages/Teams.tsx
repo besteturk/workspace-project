@@ -18,6 +18,7 @@ import type { TeamMemberSummary, TeamSummary } from "@/services/api";
 import { ApiError } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/lib/auth";
+import { log } from "console";
 
 const Teams = () => {
    const navigate = useNavigate();
@@ -83,6 +84,7 @@ const Teams = () => {
       const pendingInvites = 0;
       return { totalMembers, admins, pendingInvites };
    }, [members]);
+
 
    return (
       <AppLayout>
@@ -159,9 +161,9 @@ const Teams = () => {
                         <span className="font-medium text-foreground">
                            {team?.created_at
                               ? new Intl.DateTimeFormat("en-US", {
-                                   month: "long",
-                                   year: "numeric",
-                                }).format(new Date(team.created_at))
+                                 month: "long",
+                                 year: "numeric",
+                              }).format(new Date(team.created_at))
                               : ""}
                         </span>
                      </div>
@@ -196,9 +198,8 @@ const Teams = () => {
                               <div className="flex items-center gap-4">
                                  <Avatar className="w-12 h-12">
                                     <AvatarFallback className="bg-primary text-white font-medium">
-                                       {`${member.first_name?.[0] ?? ""}${
-                                          member.last_name?.[0] ?? ""
-                                       }`.trim() ||
+                                       {`${member.first_name?.[0] ?? ""}${member.last_name?.[0] ?? ""
+                                          }`.trim() ||
                                           member.email?.[0]?.toUpperCase() ||
                                           "@"}
                                     </AvatarFallback>
