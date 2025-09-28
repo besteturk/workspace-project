@@ -10,6 +10,9 @@ export interface User {
   password: string;
   pfp_url?: string;
   role?: 'user' | 'admin';
+  job_title?: string;
+  location?: string;
+  bio?: string;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -22,6 +25,9 @@ export interface UserRow extends RowDataPacket {
   password: string;
   pfp_url?: string;
   role: 'user' | 'admin';
+  job_title?: string | null;
+  location?: string | null;
+  bio?: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -33,15 +39,18 @@ export class UserModel {
       const hashedPassword = await bcrypt.hash(userData.password, 10);
       
       const [result] = await pool.execute<ResultSetHeader>(
-        `INSERT INTO Users (first_name, last_name, email, password, pfp_url, role) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO Users (first_name, last_name, email, password, pfp_url, role, job_title, location, bio) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userData.first_name,
           userData.last_name,
           userData.email,
           hashedPassword,
           userData.pfp_url || null,
-          userData.role || 'user'
+          userData.role || 'user',
+          userData.job_title || null,
+          userData.location || null,
+          userData.bio || null
         ]
       );
       
@@ -69,7 +78,7 @@ export class UserModel {
   static async findById(userId: number): Promise<UserRow | null> {
     try {
       const [rows] = await pool.execute<UserRow[]>(
-        'SELECT user_id, first_name, last_name, email, pfp_url, role, created_at, updated_at FROM Users WHERE user_id = ?',
+        'SELECT user_id, first_name, last_name, email, pfp_url, role, job_title, location, bio, created_at, updated_at FROM Users WHERE user_id = ?',
         [userId]
       );
       
@@ -89,7 +98,10 @@ export class UserModel {
     }
   }
 
-  static async updateProfile(userId: number, updates: Partial<Omit<User, 'user_id' | 'email' | 'password'>>): Promise<boolean> {
+  static async updateProfile(
+    userId: number,
+    updates: Partial<Omit<User, 'user_id' | 'email' | 'password'>>
+  ): Promise<boolean> {
     try {
       const fields = [];
       const values = [];
@@ -105,6 +117,18 @@ export class UserModel {
       if (updates.pfp_url !== undefined) {
         fields.push('pfp_url = ?');
         values.push(updates.pfp_url);
+      }
+      if (updates.job_title !== undefined) {
+        fields.push('job_title = ?');
+        values.push(updates.job_title);
+      }
+      if (updates.location !== undefined) {
+        fields.push('location = ?');
+        values.push(updates.location);
+      }
+      if (updates.bio !== undefined) {
+        fields.push('bio = ?');
+        values.push(updates.bio);
       }
       
       if (fields.length === 0) return false;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,51 +6,104 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FileText, Plus, Search, Users, Clock } from "lucide-react";
+import { api } from "@/services/api";
+import type { NoteSummary } from "@/services/api";
+import { ApiError } from "@/lib/api";
+import { logout } from "@/lib/auth";
+import { useNavigate } from "react-router-dom";
 
 const Pages = () => {
+   const navigate = useNavigate();
    const [searchTerm, setSearchTerm] = useState("");
-   const [selectedPage, setSelectedPage] = useState("project-proposal");
+   const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
+   const [notes, setNotes] = useState<NoteSummary[]>([]);
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
 
-   const pages = [
-      {
-         id: "project-proposal",
-         title: "Project Proposal",
-         lastEdited: "2 hours ago",
-         editor: "Alice Johnson",
-         status: "active",
-      },
-      {
-         id: "meeting-notes",
-         title: "Meeting Notes",
-         lastEdited: "1 day ago",
-         editor: "Bob Smith",
-         status: "draft",
-      },
-      {
-         id: "design-system",
-         title: "Design System",
-         lastEdited: "3 days ago",
-         editor: "Carol Davis",
-         status: "active",
-      },
-      {
-         id: "user-research",
-         title: "User Research",
-         lastEdited: "1 week ago",
-         editor: "David Wilson",
-         status: "archived",
-      },
-   ];
+   useEffect(() => {
+      const controller = new AbortController();
 
-   const activeUsers = [
-      { id: 1, name: "Alice Johnson", initials: "AJ", color: "bg-primary" },
-      { id: 2, name: "Bob Smith", initials: "BS", color: "bg-secondary" },
-      { id: 3, name: "Carol Davis", initials: "CD", color: "bg-accent" },
-   ];
+      const loadNotes = async () => {
+         try {
+            setLoading(true);
+            setError(null);
+            const response = await api.notes.listMyNotes(
+               { limit: 50 },
+               { signal: controller.signal }
+            );
+            setNotes(response.notes);
+            if (response.notes.length > 0) {
+               setSelectedPageId((prev) => prev ?? response.notes[0].note_id);
+            }
+         } catch (err) {
+            if (controller.signal.aborted) return;
+            console.error("Failed to load notes", err);
+            if (err instanceof ApiError && err.status === 401) {
+               logout();
+               navigate("/login");
+               return;
+            }
+            setError(
+               err instanceof ApiError
+                  ? err.message || "Failed to load notes"
+                  : "Failed to load notes"
+            );
+         } finally {
+            if (!controller.signal.aborted) {
+               setLoading(false);
+            }
+         }
+      };
 
-   const filteredPages = pages.filter((page) =>
-      page.title.toLowerCase().includes(searchTerm.toLowerCase())
-   );
+      loadNotes();
+
+      return () => {
+         controller.abort();
+      };
+   }, [navigate]);
+
+   const filteredPages = useMemo(() => {
+      return notes.filter((page) =>
+         (page.title ?? "Untitled").toLowerCase().includes(searchTerm.toLowerCase())
+      );
+   }, [notes, searchTerm]);
+
+   const selectedNote = useMemo(() => {
+      if (selectedPageId == null) return null;
+      return notes.find((note) => note.note_id === selectedPageId) ?? null;
+   }, [notes, selectedPageId]);
+
+   const activeUsers = useMemo(() => {
+      const seen = new Set<string>();
+
+      return notes
+         .map((note) => {
+            const fullName = `${note.first_name ?? ""} ${note.last_name ?? ""}`.trim();
+            const key = note.email ?? fullName;
+            if (!key || seen.has(key)) {
+               return null;
+            }
+
+            seen.add(key);
+
+            const initials = fullName
+               .split(" ")
+               .map((part) => part[0]?.toUpperCase() ?? "")
+               .join("");
+
+            return {
+               id: key,
+               name: fullName || note.email || "Collaborator",
+               initials: initials || note.email?.[0]?.toUpperCase() || "@",
+            };
+         })
+         .filter((user): user is { id: string; name: string; initials: string } => user !== null)
+         .slice(0, 3)
+         .map((user, index) => ({
+            ...user,
+            color: ["bg-primary", "bg-secondary", "bg-accent"][index % 3],
+         }));
+   }, [notes]);
 
    return (
       <AppLayout>
@@ -83,38 +136,61 @@ const Pages = () => {
                   </CardHeader>
                   <CardContent className="min-h-0 flex-1 overflow-y-auto">
                      <div className="space-y-2 pr-1">
-                        {filteredPages.map((page) => (
-                           <div
-                              key={page.id}
-                              className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                                 selectedPage === page.id
-                                    ? "bg-primary/10 border border-primary/20"
-                                    : "hover:bg-muted/50"
-                              }`}
-                              onClick={() => setSelectedPage(page.id)}
-                           >
-                              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                                 <h3 className="font-medium text-foreground leading-tight">
-                                    {page.title}
-                                 </h3>
-                                 <Badge
-                                    variant={
-                                       page.status === "active"
-                                          ? "default"
-                                          : page.status === "draft"
-                                          ? "secondary"
-                                          : "outline"
-                                    }
-                                    className="text-xs"
+                        {loading ? (
+                           <p className="text-sm text-muted-foreground text-center">
+                              Loading pages...
+                           </p>
+                        ) : error ? (
+                           <p className="text-sm text-destructive text-center">{error}</p>
+                        ) : filteredPages.length === 0 ? (
+                           <p className="text-sm text-muted-foreground text-center">
+                              No pages found.
+                           </p>
+                        ) : (
+                           filteredPages.map((page) => {
+                              const isSelected = selectedPageId === page.note_id;
+                              const status = page.termination_marked ? "archived" : "active";
+                              const badgeVariant = status === "archived" ? "outline" : "default";
+                              const editorName = [page.first_name, page.last_name]
+                                 .filter(Boolean)
+                                 .join(" ")
+                                 .trim();
+                              const lastEdited = new Intl.DateTimeFormat("en-US", {
+                                 month: "short",
+                                 day: "numeric",
+                                 hour: "2-digit",
+                                 minute: "2-digit",
+                              }).format(new Date(page.updated_at ?? page.created_at));
+
+                              return (
+                                 <div
+                                    key={page.note_id}
+                                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                                       isSelected
+                                          ? "bg-primary/10 border border-primary/20"
+                                          : "hover:bg-muted/50"
+                                    }`}
+                                    onClick={() => setSelectedPageId(page.note_id)}
                                  >
-                                    {page.status}
-                                 </Badge>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                 {page.editor} • {page.lastEdited}
-                              </p>
-                           </div>
-                        ))}
+                                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                       <h3 className="font-medium text-foreground leading-tight">
+                                          {page.title?.trim() || "Untitled"}
+                                       </h3>
+                                       <Badge
+                                          variant={badgeVariant}
+                                          className="text-xs"
+                                       >
+                                          {status}
+                                       </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                       {(editorName || page.email || "Unknown").trim()} •{" "}
+                                       {lastEdited}
+                                    </p>
+                                 </div>
+                              );
+                           })
+                        )}
                      </div>
                   </CardContent>
                </Card>
@@ -128,7 +204,7 @@ const Pages = () => {
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                            <h1 className="text-xl font-semibold text-foreground">
-                              {pages.find((p) => p.id === selectedPage)?.title || "Select a page"}
+                              {selectedNote?.title?.trim() || "Select a page"}
                            </h1>
                            <div className="flex items-center gap-2">
                               <Users className="w-4 h-4 text-muted-foreground" />
@@ -150,7 +226,16 @@ const Pages = () => {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                            <Clock className="w-4 h-4" />
-                           Last edited 2 hours ago
+                           {selectedNote
+                              ? `Last edited ${new Intl.DateTimeFormat("en-US", {
+                                   month: "short",
+                                   day: "numeric",
+                                   hour: "2-digit",
+                                   minute: "2-digit",
+                                }).format(
+                                   new Date(selectedNote.updated_at ?? selectedNote.created_at)
+                                )}`
+                              : "Select a page to view details"}
                         </div>
                      </div>
                   </CardContent>
@@ -160,38 +245,21 @@ const Pages = () => {
                <Card className="flex flex-1 flex-col overflow-hidden shadow-card">
                   <CardContent className="flex-1 overflow-auto p-6">
                      <div className="min-h-[400px] rounded-lg border border-border bg-card p-6">
-                        <div className="space-y-4">
-                           <h2 className="text-2xl font-bold text-foreground">Project Proposal</h2>
-                           <div className="h-px bg-border"></div>
+                        {selectedNote ? (
                            <div className="space-y-4 text-foreground">
-                              <p>
-                                 <strong>Executive Summary</strong>
-                              </p>
-                              <p>
-                                 This project aims to develop a comprehensive solution that will
-                                 enhance our team's productivity and collaboration capabilities. The
-                                 proposed system will integrate seamlessly with our existing
-                                 workflow while providing new features that address current pain
-                                 points.
-                              </p>
-                              <p>
-                                 <strong>Objectives</strong>
-                              </p>
-                              <ul className="list-disc pl-6 space-y-1">
-                                 <li>Improve team communication and collaboration</li>
-                                 <li>Streamline project management processes</li>
-                                 <li>Enhance document sharing and version control</li>
-                                 <li>Provide real-time editing capabilities</li>
-                              </ul>
-                              <p>
-                                 <strong>Timeline</strong>
-                              </p>
-                              <p>
-                                 The project is expected to be completed within 12 weeks, with major
-                                 milestones at weeks 4, 8, and 12.
-                              </p>
+                              <h2 className="text-2xl font-bold text-foreground">
+                                 {selectedNote.title?.trim() || "Untitled"}
+                              </h2>
+                              <div className="h-px bg-border"></div>
+                              <div className="whitespace-pre-line text-sm leading-relaxed">
+                                 {selectedNote.content?.trim() || "No content available."}
+                              </div>
                            </div>
-                        </div>
+                        ) : (
+                           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                              Select a page from the list to view its content.
+                           </div>
+                        )}
                      </div>
                   </CardContent>
                </Card>

@@ -12,66 +12,55 @@ import {
    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Users, UserPlus, Settings, Mail, Shield, Crown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/services/api";
+import type { TeamMemberSummary, TeamSummary } from "@/services/api";
+import { ApiError } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
+import { logout } from "@/lib/auth";
 
 const Teams = () => {
+   const navigate = useNavigate();
    const [inviteEmail, setInviteEmail] = useState("");
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [team, setTeam] = useState<TeamSummary | null>(null);
+   const [members, setMembers] = useState<TeamMemberSummary[]>([]);
 
-   const teamInfo = {
-      name: "Design Team Alpha",
-      description:
-         "A collaborative team focused on creating amazing user experiences and innovative design solutions.",
-      memberCount: 8,
-      created: "March 2024",
-   };
+   useEffect(() => {
+      const controller = new AbortController();
 
-   const members = [
-      {
-         id: 1,
-         name: "Alice Johnson",
-         email: "alice@company.com",
-         role: "Admin",
-         initials: "AJ",
-         tags: ["Designer", "Team Lead"],
-         avatar: "bg-primary",
-      },
-      {
-         id: 2,
-         name: "Bob Smith",
-         email: "bob@company.com",
-         role: "Member",
-         initials: "BS",
-         tags: ["Developer", "Frontend"],
-         avatar: "bg-secondary",
-      },
-      {
-         id: 3,
-         name: "Carol Davis",
-         email: "carol@company.com",
-         role: "Member",
-         initials: "CD",
-         tags: ["Designer", "UX"],
-         avatar: "bg-accent",
-      },
-      {
-         id: 4,
-         name: "David Wilson",
-         email: "david@company.com",
-         role: "Member",
-         initials: "DW",
-         tags: ["Developer", "Backend"],
-         avatar: "bg-success",
-      },
-      {
-         id: 5,
-         name: "Eva Martinez",
-         email: "eva@company.com",
-         role: "Member",
-         initials: "EM",
-         tags: ["Product Manager"],
-         avatar: "bg-destructive",
-      },
-   ];
+      const loadTeams = async () => {
+         try {
+            setLoading(true);
+            setError(null);
+            const response = await api.teams.getCurrent({ signal: controller.signal });
+            setTeam(response.team);
+            setMembers(response.members);
+         } catch (err) {
+            if (controller.signal.aborted) return;
+            console.error("Failed to load team", err);
+            if (err instanceof ApiError && err.status === 401) {
+               logout();
+               navigate("/login");
+            } else {
+               setError(
+                  err instanceof ApiError
+                     ? err.message || "Failed to load team information"
+                     : "Failed to load team information"
+               );
+            }
+         } finally {
+            if (!controller.signal.aborted) {
+               setLoading(false);
+            }
+         }
+      };
+
+      loadTeams();
+
+      return () => controller.abort();
+   }, [navigate]);
 
    const handleInvite = () => {
       if (inviteEmail.trim()) {
@@ -81,12 +70,19 @@ const Teams = () => {
    };
 
    const getRoleIcon = (role: string) => {
-      return role === "Admin" ? (
+      return role === "admin" ? (
          <Crown className="w-4 h-4 text-accent" />
       ) : (
          <Shield className="w-4 h-4 text-muted-foreground" />
       );
    };
+
+   const computedStats = useMemo(() => {
+      const totalMembers = members.length;
+      const admins = members.filter((member) => member.role === "admin").length;
+      const pendingInvites = 0;
+      return { totalMembers, admins, pendingInvites };
+   }, [members]);
 
    return (
       <AppLayout>
@@ -139,17 +135,35 @@ const Teams = () => {
                </CardHeader>
                <CardContent className="space-y-4">
                   <div>
-                     <h2 className="text-2xl font-bold text-foreground mb-2">{teamInfo.name}</h2>
-                     <p className="text-muted-foreground">{teamInfo.description}</p>
+                     <h2 className="text-2xl font-bold text-foreground mb-2">
+                        {team?.name ?? (loading ? "Loading team..." : "Your Team")}
+                     </h2>
+                     <p className="text-muted-foreground">
+                        {team?.description ??
+                           "Collaborate with your teammates to keep work aligned."}
+                     </p>
                   </div>
                   <div className="flex flex-wrap gap-4 text-sm">
                      <div>
                         <span className="text-muted-foreground">Members: </span>
-                        <span className="font-medium text-foreground">{teamInfo.memberCount}</span>
+                        <span className="font-medium text-foreground">
+                           {computedStats.totalMembers}
+                        </span>
+                     </div>
+                     <div>
+                        <span className="text-muted-foreground">Admins: </span>
+                        <span className="font-medium text-foreground">{computedStats.admins}</span>
                      </div>
                      <div>
                         <span className="text-muted-foreground">Created: </span>
-                        <span className="font-medium text-foreground">{teamInfo.created}</span>
+                        <span className="font-medium text-foreground">
+                           {team?.created_at
+                              ? new Intl.DateTimeFormat("en-US", {
+                                   month: "long",
+                                   year: "numeric",
+                                }).format(new Date(team.created_at))
+                              : ""}
+                        </span>
                      </div>
                   </div>
                </CardContent>
@@ -166,52 +180,62 @@ const Teams = () => {
                   </CardTitle>
                </CardHeader>
                <CardContent>
-                  <div className="space-y-4">
-                     {members.map((member) => (
-                        <div
-                           key={member.id}
-                           className="flex flex-col gap-4 rounded-lg bg-muted/50 p-4 transition-colors hover:bg-muted/70 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                           <div className="flex items-center gap-4">
-                              <Avatar className="w-12 h-12">
-                                 <AvatarFallback
-                                    className={`${member.avatar} text-white font-medium`}
-                                 >
-                                    {member.initials}
-                                 </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                 <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-medium text-foreground">{member.name}</h3>
-                                    {getRoleIcon(member.role)}
-                                 </div>
-                                 <p className="text-sm text-muted-foreground">{member.email}</p>
-                                 <div className="mt-2 flex flex-wrap gap-1">
-                                    {member.tags.map((tag, index) => (
-                                       <Badge
-                                          key={index}
-                                          className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs"
-                                       >
-                                          {tag}
-                                       </Badge>
-                                    ))}
+                  {loading ? (
+                     <p className="text-sm text-muted-foreground text-center">Loading members...</p>
+                  ) : error ? (
+                     <p className="text-sm text-destructive text-center">{error}</p>
+                  ) : members.length === 0 ? (
+                     <p className="text-sm text-muted-foreground text-center">No members found.</p>
+                  ) : (
+                     <div className="space-y-4">
+                        {members.map((member) => (
+                           <div
+                              key={member.team_member_id}
+                              className="flex flex-col gap-4 rounded-lg bg-muted/50 p-4 transition-colors hover:bg-muted/70 sm:flex-row sm:items-center sm:justify-between"
+                           >
+                              <div className="flex items-center gap-4">
+                                 <Avatar className="w-12 h-12">
+                                    <AvatarFallback className="bg-primary text-white font-medium">
+                                       {`${member.first_name?.[0] ?? ""}${
+                                          member.last_name?.[0] ?? ""
+                                       }`.trim() ||
+                                          member.email?.[0]?.toUpperCase() ||
+                                          "@"}
+                                    </AvatarFallback>
+                                 </Avatar>
+                                 <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                       <h3 className="font-medium text-foreground">
+                                          {`${member.first_name} ${member.last_name}`.trim() ||
+                                             member.email}
+                                       </h3>
+                                       {getRoleIcon(member.role)}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{member.email}</p>
+                                    {member.job_title ? (
+                                       <div className="mt-2">
+                                          <Badge className="bg-secondary text-secondary-foreground text-xs">
+                                             {member.job_title}
+                                          </Badge>
+                                       </div>
+                                    ) : null}
                                  </div>
                               </div>
+                              <div className="flex items-center gap-2 self-start sm:self-auto">
+                                 <Badge variant={member.role === "admin" ? "default" : "outline"}>
+                                    {member.role}
+                                 </Badge>
+                                 <Button
+                                    variant="ghost"
+                                    size="sm"
+                                 >
+                                    <Settings className="w-4 h-4" />
+                                 </Button>
+                              </div>
                            </div>
-                           <div className="flex items-center gap-2 self-start sm:self-auto">
-                              <Badge variant={member.role === "Admin" ? "default" : "outline"}>
-                                 {member.role}
-                              </Badge>
-                              <Button
-                                 variant="ghost"
-                                 size="sm"
-                              >
-                                 <Settings className="w-4 h-4" />
-                              </Button>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
+                        ))}
+                     </div>
+                  )}
                </CardContent>
             </Card>
 
@@ -224,7 +248,9 @@ const Teams = () => {
                            <Users className="w-6 h-6 text-primary" />
                         </div>
                         <div>
-                           <p className="text-2xl font-bold text-foreground">{members.length}</p>
+                           <p className="text-2xl font-bold text-foreground">
+                              {computedStats.totalMembers}
+                           </p>
                            <p className="text-sm text-muted-foreground">Active Members</p>
                         </div>
                      </div>
@@ -237,7 +263,9 @@ const Teams = () => {
                            <Settings className="w-6 h-6 text-secondary" />
                         </div>
                         <div>
-                           <p className="text-2xl font-bold text-foreground">2</p>
+                           <p className="text-2xl font-bold text-foreground">
+                              {computedStats.admins}
+                           </p>
                            <p className="text-sm text-muted-foreground">Admins</p>
                         </div>
                      </div>
@@ -250,7 +278,9 @@ const Teams = () => {
                            <UserPlus className="w-6 h-6 text-accent" />
                         </div>
                         <div>
-                           <p className="text-2xl font-bold text-foreground">3</p>
+                           <p className="text-2xl font-bold text-foreground">
+                              {computedStats.pendingInvites}
+                           </p>
                            <p className="text-sm text-muted-foreground">Pending Invites</p>
                         </div>
                      </div>

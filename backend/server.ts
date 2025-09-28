@@ -4,6 +4,9 @@ import dotenv from 'dotenv';
 import { testConnection, initializeDatabase } from './config/database';
 import authRoutes from './routes/auth';
 import noteRoutes from './routes/notes';
+import teamRoutes from './routes/teams';
+import eventRoutes from './routes/events';
+import messagingRoutes from './routes/messaging';
 
 dotenv.config();
 
@@ -30,6 +33,9 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', noteRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/messaging', messagingRoutes);
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);

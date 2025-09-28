@@ -4,16 +4,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { login as loginRequest } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 
 const Login = () => {
    const [email, setEmail] = useState("");
    const [password, setPassword] = useState("");
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
    const navigate = useNavigate();
 
-   const handleLogin = (e: React.FormEvent) => {
+   const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
-      // Mock login - in real app would validate credentials
-      navigate("/dashboard");
+      setError(null);
+      setLoading(true);
+
+      try {
+         await loginRequest({ email, password });
+         navigate("/dashboard");
+      } catch (err) {
+         const message =
+            err instanceof ApiError
+               ? typeof err.data === "object" &&
+                 err.data !== null &&
+                 "error" in err.data &&
+                 typeof (err.data as { error?: string }).error === "string"
+                  ? (err.data as { error: string }).error ?? err.message
+                  : err.message
+               : "Login failed. Please try again.";
+         setError(message);
+      } finally {
+         setLoading(false);
+      }
    };
 
    return (
@@ -51,11 +73,13 @@ const Login = () => {
                         required
                      />
                   </div>
+                  {error && <p className="text-sm text-destructive">{error}</p>}
                   <Button
                      type="submit"
-                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                     disabled={loading}
+                     className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
                   >
-                     Login
+                     {loading ? "Logging in..." : "Login"}
                   </Button>
                </form>
             </CardContent>

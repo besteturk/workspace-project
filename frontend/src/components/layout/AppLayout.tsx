@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import logo from "@/../images/logo.png";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,6 +21,9 @@ import {
    DropdownMenuSeparator,
    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { api } from "@/services/api";
+import { ApiError } from "@/lib/api";
+import { fetchProfile, getStoredUser, logout } from "@/lib/auth";
 
 interface AppLayoutProps {
    children: ReactNode;
@@ -28,6 +31,10 @@ interface AppLayoutProps {
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
    const location = useLocation();
+   const navigate = useNavigate();
+   const [user, setUser] = useState(() => getStoredUser());
+   const [teamName, setTeamName] = useState<string | null>(null);
+   const [isLoadingTeam, setIsLoadingTeam] = useState(false);
 
    const navigation = [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -39,6 +46,70 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
    ];
 
    const isActive = (path: string) => location.pathname === path;
+
+   useEffect(() => {
+      const controller = new AbortController();
+
+      const loadProfile = async () => {
+         try {
+            const response = await fetchProfile({ signal: controller.signal });
+            setUser(response.user);
+         } catch (error) {
+            if (controller.signal.aborted) return;
+            if (error instanceof ApiError && error.status === 401) {
+               logout();
+               navigate("/login");
+            } else {
+               console.error("Failed to fetch profile", error);
+            }
+         }
+      };
+
+      loadProfile();
+
+      return () => controller.abort();
+   }, [navigate]);
+
+   useEffect(() => {
+      const controller = new AbortController();
+
+      const loadTeam = async () => {
+         try {
+            setIsLoadingTeam(true);
+            const { team } = await api.teams.getCurrent({ signal: controller.signal });
+            setTeamName(team.name);
+         } catch (error) {
+            if (controller.signal.aborted) return;
+            if (error instanceof ApiError && error.status === 401) {
+               logout();
+               navigate("/login");
+            } else {
+               console.error("Failed to fetch team", error);
+            }
+         } finally {
+            if (!controller.signal.aborted) {
+               setIsLoadingTeam(false);
+            }
+         }
+      };
+
+      loadTeam();
+
+      return () => controller.abort();
+   }, [navigate]);
+
+   const userInitials = useMemo(() => {
+      if (!user) return "--";
+      const firstInitial = user.first_name?.[0]?.toUpperCase() ?? "";
+      const lastInitial = user.last_name?.[0]?.toUpperCase() ?? "";
+      const initials = `${firstInitial}${lastInitial}`.trim();
+      return initials || user.email?.[0]?.toUpperCase() || "@";
+   }, [user]);
+
+   const handleLogout = () => {
+      logout();
+      navigate("/login");
+   };
 
    return (
       <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
@@ -62,14 +133,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                            variant="outline"
                            className="w-full justify-between mb-6"
                         >
-                           <span>Design Team Alpha</span>
+                           <span>
+                              {teamName ?? (isLoadingTeam ? "Loading team..." : "Your Team")}
+                           </span>
                            <ChevronDown className="w-4 h-4" />
                         </Button>
                      </DropdownMenuTrigger>
                      <DropdownMenuContent className="w-56">
-                        <DropdownMenuItem>Design Team Alpha</DropdownMenuItem>
-                        <DropdownMenuItem>Marketing Team</DropdownMenuItem>
-                        <DropdownMenuItem>Product Team</DropdownMenuItem>
+                        {teamName ? <DropdownMenuItem>{teamName}</DropdownMenuItem> : null}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>Create New Team</DropdownMenuItem>
                      </DropdownMenuContent>
@@ -107,15 +178,18 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                               >
                                  <Avatar className="w-8 h-8">
                                     <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                                       AJ
+                                       {userInitials}
                                     </AvatarFallback>
                                  </Avatar>
                                  <div className="flex-1 text-left">
                                     <p className="text-sm font-medium text-foreground">
-                                       Alice Johnson
+                                       {user
+                                          ? `${user.first_name} ${user.last_name}`.trim() ||
+                                            user.email
+                                          : "Guest"}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                       alice@company.com
+                                       {user?.email ?? ""}
                                     </p>
                                  </div>
                                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -131,7 +205,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                               Profile Settings
                            </DropdownMenuItem>
                            <DropdownMenuSeparator />
-                           <DropdownMenuItem>
+                           <DropdownMenuItem onSelect={handleLogout}>
                               <LogOut className="w-4 h-4 mr-2" />
                               Sign Out
                            </DropdownMenuItem>

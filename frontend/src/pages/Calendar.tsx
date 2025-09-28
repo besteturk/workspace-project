@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,37 +13,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Plus, Clock, Users } from "lucide-react";
+import { api } from "@/services/api";
+import type { EventSummary } from "@/services/api";
+import { ApiError } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
+import { logout } from "@/lib/auth";
 
 const Calendar = () => {
+   const navigate = useNavigate();
    const [selectedDate, setSelectedDate] = useState(new Date().getDate());
    const [viewMode, setViewMode] = useState<"week" | "month">("week");
-
-   const events = [
-      {
-         id: 1,
-         title: "Team Standup",
-         time: "09:00",
-         duration: 30,
-         type: "assigned",
-         color: "bg-primary",
-      },
-      {
-         id: 2,
-         title: "Design Review",
-         time: "14:00",
-         duration: 60,
-         type: "default",
-         color: "bg-secondary",
-      },
-      {
-         id: 3,
-         title: "Project Planning",
-         time: "16:00",
-         duration: 90,
-         type: "highlighted",
-         color: "bg-accent",
-      },
-   ];
+   const [events, setEvents] = useState<EventSummary[]>([]);
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
 
    const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
    const timeSlots = Array.from({ length: 12 }, (_, i) => `${8 + i}:00`);
@@ -56,10 +38,92 @@ const Calendar = () => {
       assignTo: "",
    });
 
-   const handleCreateEvent = () => {
-      console.log("Creating event:", newEvent);
-      setNewEvent({ title: "", description: "", date: "", time: "", assignTo: "" });
+   useEffect(() => {
+      const controller = new AbortController();
+
+      const loadEvents = async () => {
+         try {
+            setLoading(true);
+            setError(null);
+            const response = await api.events.list({ signal: controller.signal });
+            setEvents(response.events);
+         } catch (err) {
+            if (controller.signal.aborted) return;
+            console.error("Failed to load events", err);
+            if (err instanceof ApiError && err.status === 401) {
+               logout();
+               navigate("/login");
+            } else {
+               setError(
+                  err instanceof ApiError
+                     ? err.message || "Failed to load events"
+                     : "Failed to load events"
+               );
+            }
+         } finally {
+            if (!controller.signal.aborted) {
+               setLoading(false);
+            }
+         }
+      };
+
+      loadEvents();
+
+      return () => controller.abort();
+   }, [navigate]);
+
+   const handleCreateEvent = async () => {
+      if (!newEvent.title || !newEvent.date || !newEvent.time) {
+         setError("Title, date and time are required");
+         return;
+      }
+
+      const start = new Date(`${newEvent.date}T${newEvent.time}`);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+      try {
+         setLoading(true);
+         setError(null);
+         const response = await api.events.create(
+            {
+               title: newEvent.title,
+               description: newEvent.description,
+               start_time: start.toISOString(),
+               end_time: end.toISOString(),
+               assigned_to_user_id: null,
+            },
+            {}
+         );
+         setEvents(response.events);
+         setNewEvent({ title: "", description: "", date: "", time: "", assignTo: "" });
+      } catch (err) {
+         console.error("Failed to create event", err);
+         if (err instanceof ApiError && err.status === 401) {
+            logout();
+            navigate("/login");
+         } else {
+            setError(
+               err instanceof ApiError
+                  ? err.message || "Failed to create event"
+                  : "Failed to create event"
+            );
+         }
+      } finally {
+         setLoading(false);
+      }
    };
+
+   const weeklyEvents = useMemo(() => {
+      const map = new Map<number, EventSummary[]>();
+      events.forEach((event) => {
+         const date = new Date(event.start_time);
+         const dayIndex = (date.getDay() + 6) % 7;
+         const list = map.get(dayIndex) ?? [];
+         list.push(event);
+         map.set(dayIndex, list);
+      });
+      return map;
+   }, [events]);
 
    return (
       <AppLayout>
@@ -194,28 +258,38 @@ const Calendar = () => {
 
                                  {/* Events for this day */}
                                  <div className="space-y-12">
-                                    {timeSlots.map((time, timeIndex) => (
-                                       <div
-                                          key={time}
-                                          className="relative h-12 rounded border border-border"
-                                       >
-                                          {dayIndex === 2 && timeIndex === 1 && (
-                                             <div className="absolute inset-x-1 top-1 rounded bg-primary p-1 text-xs text-primary-foreground">
-                                                Team Standup
-                                             </div>
-                                          )}
-                                          {dayIndex === 2 && timeIndex === 6 && (
-                                             <div className="absolute inset-x-1 top-1 rounded bg-secondary p-1 text-xs text-secondary-foreground">
-                                                Design Review
-                                             </div>
-                                          )}
-                                          {dayIndex === 4 && timeIndex === 8 && (
-                                             <div className="absolute inset-x-1 top-1 rounded bg-accent p-1 text-xs text-accent-foreground">
-                                                Project Planning
-                                             </div>
-                                          )}
-                                       </div>
-                                    ))}
+                                    {timeSlots.map((time, timeIndex) => {
+                                       const currentHour = 8 + timeIndex;
+                                       const eventsForDay = weeklyEvents.get(dayIndex) ?? [];
+                                       const matchingEvents = eventsForDay.filter((event) => {
+                                          const eventStart = new Date(event.start_time);
+                                          return eventStart.getHours() === currentHour;
+                                       });
+
+                                       return (
+                                          <div
+                                             key={time}
+                                             className="relative h-12 rounded border border-border"
+                                          >
+                                             {matchingEvents.map((event) => (
+                                                <div
+                                                   key={event.event_id}
+                                                   className="absolute inset-x-1 top-1 rounded bg-primary p-1 text-xs text-primary-foreground"
+                                                >
+                                                   <div className="font-medium">{event.title}</div>
+                                                   <div className="text-[10px] opacity-80">
+                                                      {new Date(
+                                                         event.start_time
+                                                      ).toLocaleTimeString([], {
+                                                         hour: "2-digit",
+                                                         minute: "2-digit",
+                                                      })}
+                                                   </div>
+                                                </div>
+                                             ))}
+                                          </div>
+                                       );
+                                    })}
                                  </div>
                               </div>
                            ))}
