@@ -37,7 +37,7 @@ export class UserModel {
     try {
       // Hash password
       const hashedPassword = await bcrypt.hash(userData.password, 10);
-      
+
       const [result] = await pool.execute<ResultSetHeader>(
         `INSERT INTO Users (first_name, last_name, email, password, pfp_url, role, job_title, location, bio) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -53,11 +53,11 @@ export class UserModel {
           userData.bio || null
         ]
       );
-      
+
       return result.insertId;
     } catch (error) {
       console.error('Error creating user:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -67,11 +67,11 @@ export class UserModel {
         'SELECT * FROM Users WHERE email = ?',
         [email]
       );
-      
+
       return rows[0] || null;
     } catch (error) {
       console.error('Error finding user by email:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -81,11 +81,11 @@ export class UserModel {
         'SELECT user_id, first_name, last_name, email, pfp_url, role, job_title, location, bio, created_at, updated_at FROM Users WHERE user_id = ?',
         [userId]
       );
-      
+
       return rows[0] || null;
     } catch (error) {
       console.error('Error finding user by ID:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -94,7 +94,7 @@ export class UserModel {
       return await bcrypt.compare(plainPassword, hashedPassword);
     } catch (error) {
       console.error('Error verifying password:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -105,7 +105,7 @@ export class UserModel {
     try {
       const fields = [];
       const values = [];
-      
+
       if (updates.first_name) {
         fields.push('first_name = ?');
         values.push(updates.first_name);
@@ -130,36 +130,36 @@ export class UserModel {
         fields.push('bio = ?');
         values.push(updates.bio);
       }
-      
+
       if (fields.length === 0) return false;
-      
+
       values.push(userId);
-      
+
       const [result] = await pool.execute<ResultSetHeader>(
         `UPDATE Users SET ${fields.join(', ')} WHERE user_id = ?`,
         values
       );
-      
+
       return result.affectedRows > 0;
     } catch (error) {
       console.error('Error updating user profile:', error);
-      return false;
+      throw error;
     }
   }
 
   static async changePassword(userId: number, newPassword: string): Promise<boolean> {
     try {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      
+
       const [result] = await pool.execute<ResultSetHeader>(
         'UPDATE Users SET password = ? WHERE user_id = ?',
         [hashedPassword, userId]
       );
-      
+
       return result.affectedRows > 0;
     } catch (error) {
       console.error('Error changing password:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -169,11 +169,11 @@ export class UserModel {
         'DELETE FROM Users WHERE user_id = ?',
         [userId]
       );
-      
+
       return result.affectedRows > 0;
     } catch (error) {
       console.error('Error deleting user:', error);
-      return false;
+      throw error;
     }
   }
 }

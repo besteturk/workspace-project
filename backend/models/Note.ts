@@ -38,11 +38,11 @@ export class NoteModel {
           noteData.termination_marked || false
         ]
       );
-      
+
       return result.insertId;
     } catch (error) {
       console.error('Error creating note:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -55,11 +55,11 @@ export class NoteModel {
          WHERE n.note_id = ?`,
         [noteId]
       );
-      
+
       return rows[0] || null;
     } catch (error) {
       console.error('Error finding note by ID:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -74,11 +74,11 @@ export class NoteModel {
          LIMIT ? OFFSET ?`,
         [userId, limit, offset]
       );
-      
+
       return rows;
     } catch (error) {
       console.error('Error finding notes by user ID:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -86,7 +86,7 @@ export class NoteModel {
     try {
       const fields = [];
       const values = [];
-      
+
       if (updates.title !== undefined) {
         fields.push('title = ?');
         values.push(updates.title);
@@ -95,20 +95,20 @@ export class NoteModel {
         fields.push('content = ?');
         values.push(updates.content);
       }
-      
+
       if (fields.length === 0) return false;
-      
+
       values.push(noteId, userId);
-      
+
       const [result] = await pool.execute<ResultSetHeader>(
         `UPDATE Notes SET ${fields.join(', ')} WHERE note_id = ? AND noter_id = ?`,
         values
       );
-      
+
       return result.affectedRows > 0;
     } catch (error) {
       console.error('Error updating note:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -118,11 +118,11 @@ export class NoteModel {
         'UPDATE Notes SET termination_marked = 1 WHERE note_id = ? AND noter_id = ?',
         [noteId, userId]
       );
-      
+
       return result.affectedRows > 0;
     } catch (error) {
       console.error('Error marking note for termination:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -132,11 +132,11 @@ export class NoteModel {
         'DELETE FROM Notes WHERE note_id = ? AND noter_id = ?',
         [noteId, userId]
       );
-      
+
       return result.affectedRows > 0;
     } catch (error) {
       console.error('Error deleting note:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -150,21 +150,21 @@ export class NoteModel {
         AND (n.title LIKE ? OR n.content LIKE ?)
       `;
       const params = [`%${query}%`, `%${query}%`];
-      
+
       if (userId) {
         sql += ' AND n.noter_id = ?';
         params.push(userId.toString());
       }
-      
+
       sql += ' ORDER BY n.created_at DESC LIMIT ?';
       params.push(limit.toString());
-      
+
       const [rows] = await pool.execute<NoteRow[]>(sql, params);
-      
+
       return rows;
     } catch (error) {
       console.error('Error searching notes:', error);
-      return [];
+      throw error;
     }
   }
 }
