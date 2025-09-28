@@ -144,7 +144,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
          {/* Main Content */}
          <main className="flex h-full flex-1 min-h-0">
-            <div className="flex h-full w-full flex-col overflow-x-hidden overflow-y-auto p-6">
+            <div className="flex h-full w-full flex-col overflow-x-hidden overflow-y-scroll p-6">
                <div className="flex h-full min-h-0 flex-col">{children}</div>
             </div>
          </main>

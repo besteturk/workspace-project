@@ -56,10 +56,16 @@ const Dashboard = () => {
          <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-               <Button className="bg-primary hover:bg-primary/90">
-                  <FileText className="w-4 h-4 mr-2" />
-                  New Page
-               </Button>
+               <div className="flex gap-x-2">
+                  <Button className="bg-primary hover:bg-primary/90">
+                     <FileText className="w-4 h-4 mr-2" />
+                     New Event
+                  </Button>
+                  <Button className="bg-primary hover:bg-primary/90">
+                     <FileText className="w-4 h-4 mr-2" />
+                     New Page
+                  </Button>
+               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
