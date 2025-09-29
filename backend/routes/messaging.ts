@@ -2,6 +2,12 @@ import express from "express";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { TeamModel } from "../models/Team";
 import { ConversationModel, MessageModel } from "../models/Messaging";
+import { isDatabaseDisabled } from "../config/database";
+import {
+  appendDummyMessage,
+  getDummyConversations,
+  getDummyMessages,
+} from "../dummy-data/messaging";
 
 const router = express.Router();
 
@@ -10,6 +16,10 @@ router.use(authenticateToken);
 router.get("/conversations", async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.user_id;
+
+    if (isDatabaseDisabled) {
+      return res.json({ conversations: getDummyConversations(userId) });
+    }
 
     const team = await TeamModel.ensureTeamWithSamples(userId);
     if (!team) {
@@ -35,12 +45,16 @@ router.get("/conversations/:conversationId/messages", async (req: AuthRequest, r
       return res.status(400).json({ error: "Invalid conversation id" });
     }
 
+    if (isDatabaseDisabled) {
+      return res.json({ messages: getDummyMessages(userId, conversationId) });
+    }
+
     const isMember = await ConversationModel.isMember(conversationId, userId);
     if (!isMember) {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const messages = await MessageModel.list(conversationId);
+    const messages = await MessageModel.list(conversationId, userId);
     await MessageModel.markRead(conversationId, userId);
 
     res.json({ messages });
@@ -64,6 +78,11 @@ router.post("/conversations/:conversationId/messages", async (req: AuthRequest, 
       return res.status(400).json({ error: "Message content is required" });
     }
 
+    if (isDatabaseDisabled) {
+      const messages = appendDummyMessage(userId, conversationId, content.trim());
+      return res.status(201).json({ message: "Message sent", messages });
+    }
+
     const isMember = await ConversationModel.isMember(conversationId, userId);
     if (!isMember) {
       return res.status(403).json({ error: "Access denied" });
@@ -74,7 +93,7 @@ router.post("/conversations/:conversationId/messages", async (req: AuthRequest, 
       return res.status(500).json({ error: "Failed to send message" });
     }
 
-    const messages = await MessageModel.list(conversationId);
+    const messages = await MessageModel.list(conversationId, userId);
     res.status(201).json({ message: "Message sent", messages });
   } catch (error) {
     console.error("Message send error:", error);

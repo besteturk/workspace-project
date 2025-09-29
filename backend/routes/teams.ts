@@ -1,6 +1,8 @@
 import express from "express";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { TeamModel } from "../models/Team";
+import { isDatabaseDisabled } from "../config/database";
+import { getDummyTeam, getDummyTeamMembers } from "../dummy-data/teams";
 
 const router = express.Router();
 
@@ -9,6 +11,12 @@ router.use(authenticateToken);
 router.get("/current", async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.user_id;
+
+    if (isDatabaseDisabled) {
+      const team = getDummyTeam(userId);
+      const members = getDummyTeamMembers(userId);
+      return res.json({ team, members });
+    }
 
     const team = await TeamModel.ensureTeamWithSamples(userId);
     if (!team) {

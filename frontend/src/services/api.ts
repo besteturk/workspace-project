@@ -150,6 +150,7 @@ export interface MessageSummary {
   last_name?: string;
   email?: string;
   pfp_url?: string | null;
+  is_read?: boolean;
 }
 
 type RequestOptions = {

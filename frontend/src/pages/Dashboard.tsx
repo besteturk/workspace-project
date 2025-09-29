@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { FileText, Clock, Users, MessageSquare } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { api } from "@/services/api";
 import type { NoteSummary } from "@/services/api";
+import { useNavigate } from "react-router-dom";
 
 type DashboardStats = {
    activePages: number;
@@ -70,6 +70,7 @@ function formatRelativeTime(timestamp: string | undefined) {
 }
 
 const Dashboard = () => {
+   const navigate = useNavigate();
    const [stats, setStats] = useState<DashboardStats>(DEFAULT_STATS);
    const [recentPages, setRecentPages] = useState<RecentPage[]>(DEFAULT_RECENT_PAGES);
    const [teamActivity, setTeamActivity] = useState<TeamActivityItem[]>(DEFAULT_TEAM_ACTIVITY);
@@ -151,11 +152,17 @@ const Dashboard = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
                <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
                <div className="flex gap-x-2">
-                  <Button className="bg-primary hover:bg-primary/90">
+                  <Button
+                     className="bg-primary hover:bg-primary/90"
+                     onClick={() => navigate("/calendar?newEvent=1")}
+                  >
                      <FileText className="w-4 h-4 mr-2" />
                      New Event
                   </Button>
-                  <Button className="bg-primary hover:bg-primary/90">
+                  <Button
+                     className="bg-primary hover:bg-primary/90"
+                     onClick={() => navigate("/pages?create=new")}
+                  >
                      <FileText className="w-4 h-4 mr-2" />
                      New Page
                   </Button>
@@ -172,7 +179,9 @@ const Dashboard = () => {
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 ">
-                     {loading && recentPages.length === 0 ? (
+                     {error ? (
+                        <p className="text-sm text-destructive text-center pt-4">{error}</p>
+                     ) : loading && recentPages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center">Loading...</p>
                      ) : recentPages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center">
@@ -190,16 +199,17 @@ const Dashboard = () => {
                                     Edited by {page.editor} • {page.lastEdited}
                                  </p>
                               </div>
-                              <Badge
+                              <Button
+                                 size="sm"
                                  variant="secondary"
                                  className="bg-secondary/10 text-secondary hover:bg-secondary/20"
+                                 onClick={() => navigate(`/pages?noteId=${page.id}`)}
                               >
                                  View
-                              </Badge>
+                              </Button>
                            </div>
                         ))
                      )}
-                     {error && <p className="text-xs text-destructive text-center">{error}</p>}
                   </CardContent>
                </Card>
 
@@ -212,7 +222,9 @@ const Dashboard = () => {
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                     {loading && teamActivity.length === 0 ? (
+                     {error ? (
+                        <p className="text-sm text-destructive text-center pt-4">{error}</p>
+                     ) : loading && teamActivity.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center">Loading...</p>
                      ) : teamActivity.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center">
@@ -237,7 +249,6 @@ const Dashboard = () => {
                            </div>
                         ))
                      )}
-                     {error && <p className="text-xs text-destructive text-center">{error}</p>}
                   </CardContent>
                </Card>
             </div>

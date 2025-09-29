@@ -2,6 +2,9 @@ import express from "express";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 import { TeamModel } from "../models/Team";
 import { EventModel } from "../models/Event";
+import { isDatabaseDisabled } from "../config/database";
+import { getDummyTeam } from "../dummy-data/teams";
+import { createDummyEvent, getDummyEvents } from "../dummy-data/events";
 
 const router = express.Router();
 
@@ -10,6 +13,12 @@ router.use(authenticateToken);
 router.get("/", async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.user_id;
+
+    if (isDatabaseDisabled) {
+      const team = getDummyTeam(userId);
+      const events = getDummyEvents(team.team_id, userId);
+      return res.json({ events });
+    }
 
     const team = await TeamModel.ensureTeamWithSamples(userId);
     if (!team) {
@@ -35,11 +44,6 @@ router.post("/", async (req: AuthRequest, res) => {
       return res.status(400).json({ error: "Title, start_time and end_time are required" });
     }
 
-    const team = await TeamModel.ensureTeamWithSamples(userId);
-    if (!team) {
-      return res.status(404).json({ error: "Team not found" });
-    }
-
     const start = new Date(start_time);
     const end = new Date(end_time);
 
@@ -49,6 +53,24 @@ router.post("/", async (req: AuthRequest, res) => {
 
     if (end <= start) {
       return res.status(400).json({ error: "End time must be after start time" });
+    }
+
+    if (isDatabaseDisabled) {
+      const team = getDummyTeam(userId);
+      const events = createDummyEvent(team.team_id, userId, {
+        title,
+        description: description ?? null,
+        start,
+        end,
+        assigned_to_user_id: assigned_to_user_id ?? null,
+      });
+
+      return res.status(201).json({ message: "Event created (mock)", events });
+    }
+
+    const team = await TeamModel.ensureTeamWithSamples(userId);
+    if (!team) {
+      return res.status(404).json({ error: "Team not found" });
     }
 
     const eventId = await EventModel.create({

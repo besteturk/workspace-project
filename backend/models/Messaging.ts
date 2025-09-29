@@ -29,7 +29,11 @@ export interface MessageRow extends RowDataPacket {
   first_name?: string;
   last_name?: string;
   email?: string;
+  pfp_url?: string | null;
+  is_read?: boolean;
 }
+
+type MessageRowWithNumericRead = RowDataPacket & Omit<MessageRow, "is_read"> & { is_read: number };
 
 export interface ConversationSummary {
   conversation_id: number;
@@ -221,9 +225,9 @@ export class ConversationModel {
       const title = row.name
         ? row.name
         : participants
-            .filter((participant) => participant.user_id !== userId)
-            .map((participant) => `${participant.first_name} ${participant.last_name}`.trim())
-            .join(", ") || "Direct Message";
+          .filter((participant) => participant.user_id !== userId)
+          .map((participant) => `${participant.first_name} ${participant.last_name}`.trim())
+          .join(", ") || "Direct Message";
 
       return {
         conversation_id: row.conversation_id,
@@ -233,17 +237,17 @@ export class ConversationModel {
         unread_count: unread,
         last_message: lastMessage
           ? {
-              message_id: lastMessage.message_id,
-              content: lastMessage.content,
-              created_at: lastMessage.created_at,
-              sender: {
-                user_id: lastMessage.sender_id,
-                first_name: lastMessage.first_name ?? "",
-                last_name: lastMessage.last_name ?? "",
-                email: lastMessage.email ?? "",
-                pfp_url: (lastMessage as any).pfp_url ?? null,
-              },
-            }
+            message_id: lastMessage.message_id,
+            content: lastMessage.content,
+            created_at: lastMessage.created_at,
+            sender: {
+              user_id: lastMessage.sender_id,
+              first_name: lastMessage.first_name ?? "",
+              last_name: lastMessage.last_name ?? "",
+              email: lastMessage.email ?? "",
+              pfp_url: lastMessage.pfp_url ?? null,
+            },
+          }
           : null,
         participants,
       } satisfies ConversationSummary;
@@ -252,7 +256,32 @@ export class ConversationModel {
 }
 
 export class MessageModel {
-  static async list(conversationId: number): Promise<MessageRow[]> {
+  static async list(conversationId: number, viewerId?: number): Promise<MessageRow[]> {
+    if (viewerId !== undefined) {
+      const [rows] = await pool.execute<MessageRowWithNumericRead[]>(
+        `SELECT m.*, u.first_name, u.last_name, u.email, u.pfp_url,
+                CASE
+                  WHEN cm.last_read_at IS NULL THEN
+                    CASE WHEN m.sender_id = ? THEN 1 ELSE 0 END
+                  WHEN m.created_at <= cm.last_read_at THEN 1
+                  ELSE 0
+                END AS is_read
+         FROM Messages m
+         INNER JOIN Users u ON u.user_id = m.sender_id
+         LEFT JOIN ConversationMembers cm
+           ON cm.conversation_id = m.conversation_id AND cm.user_id = ?
+         WHERE m.conversation_id = ?
+         ORDER BY m.created_at ASC`,
+        [viewerId, viewerId, conversationId]
+      );
+
+      return rows.map(({ is_read, sender_id, ...rest }) => ({
+        ...rest,
+        sender_id,
+        is_read: sender_id === viewerId ? false : Boolean(is_read),
+      })) as MessageRow[];
+    }
+
     const [rows] = await pool.execute<MessageRow[]>(
       `SELECT m.*, u.first_name, u.last_name, u.email, u.pfp_url
        FROM Messages m

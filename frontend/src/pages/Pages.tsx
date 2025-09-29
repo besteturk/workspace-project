@@ -1,19 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
 import { FileText, Plus, Search, Users, Clock } from "lucide-react";
 import { api } from "@/services/api";
 import type { NoteSummary } from "@/services/api";
 import { ApiError } from "@/lib/api";
-import { logout } from "@/lib/auth";
-import { useNavigate } from "react-router-dom";
+import { getStoredUser, logout } from "@/lib/auth";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const Pages = () => {
    const navigate = useNavigate();
+   const [searchParams, setSearchParams] = useSearchParams();
+   const { toast } = useToast();
+   const currentUser = useMemo(() => getStoredUser(), []);
+   const currentUserId = currentUser?.user_id;
+   const [creatingPage, setCreatingPage] = useState(false);
+   const [createFromParamHandled, setCreateFromParamHandled] = useState(false);
+   const [hasInitialSelection, setHasInitialSelection] = useState(false);
+   const [isEditing, setIsEditing] = useState(false);
+   const [editTitle, setEditTitle] = useState("");
+   const [editContent, setEditContent] = useState("");
+   const [savingEdit, setSavingEdit] = useState(false);
    const [searchTerm, setSearchTerm] = useState("");
    const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
    const [notes, setNotes] = useState<NoteSummary[]>([]);
@@ -32,9 +45,6 @@ const Pages = () => {
                { signal: controller.signal }
             );
             setNotes(response.notes);
-            if (response.notes.length > 0) {
-               setSelectedPageId((prev) => prev ?? response.notes[0].note_id);
-            }
          } catch (err) {
             if (controller.signal.aborted) return;
             console.error("Failed to load notes", err);
@@ -67,6 +77,63 @@ const Pages = () => {
          (page.title ?? "Untitled").toLowerCase().includes(searchTerm.toLowerCase())
       );
    }, [notes, searchTerm]);
+
+   const handleCreatePage = useCallback(async () => {
+      try {
+         setCreatingPage(true);
+         setError(null);
+
+         const response = await api.notes.create({
+            title: "Untitled page",
+            content: "",
+         });
+
+         const newNote = response.note;
+         setNotes((previous) => [newNote, ...previous.filter((note) => note.note_id !== newNote.note_id)]);
+         setSelectedPageId(newNote.note_id);
+         setCreateFromParamHandled(true);
+
+         const nextParams = new URLSearchParams(searchParams);
+         nextParams.set("noteId", String(newNote.note_id));
+         nextParams.delete("create");
+         setSearchParams(nextParams, { replace: true });
+
+         toast({
+            title: "Page created",
+            description: "A new page has been added to your workspace.",
+         });
+      } catch (err) {
+         console.error("Failed to create page", err);
+         if (err instanceof ApiError && err.status === 401) {
+            logout();
+            navigate("/login");
+            return;
+         }
+
+         const message = err instanceof ApiError ? err.message || "Failed to create page" : "Failed to create page";
+         setError(message);
+         toast({
+            title: "Unable to create page",
+            description: message,
+            variant: "destructive",
+         });
+      } finally {
+         setCreatingPage(false);
+      }
+   }, [navigate, searchParams, setSearchParams, toast]);
+
+   useEffect(() => {
+      const shouldCreateFromQuery = searchParams.get("create") === "true";
+
+      if (shouldCreateFromQuery && !createFromParamHandled) {
+         void handleCreatePage();
+         return;
+      }
+
+      if (!shouldCreateFromQuery && createFromParamHandled) {
+         setCreateFromParamHandled(false);
+      }
+   }, [createFromParamHandled, handleCreatePage, searchParams]);
 
    const selectedNote = useMemo(() => {
       if (selectedPageId == null) return null;
@@ -120,6 +187,10 @@ const Pages = () => {
                         <Button
                            size="sm"
                            className="bg-primary hover:bg-primary/90"
+                           onClick={handleCreatePage}
+                           disabled={creatingPage}
+                           aria-disabled={creatingPage}
+                           aria-label="Create page"
                         >
                            <Plus className="w-4 h-4" />
                         </Button>
@@ -255,7 +326,7 @@ const Pages = () => {
                               </div>
                            </div>
                         ) : (
-                           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                           <div className="flex pt-4 h-full items-center justify-center text-sm text-muted-foreground">
                               Select a page from the list to view its content.
                            </div>
                         )}

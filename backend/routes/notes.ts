@@ -1,6 +1,14 @@
 import express from 'express';
 import { NoteModel } from '../models/Note';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { isDatabaseDisabled } from '../config/database';
+import {
+  createDummyNote,
+  deleteDummyNote,
+  getDummyNoteById,
+  getDummyNotes,
+  updateDummyNote,
+} from '../dummy-data/notes';
 
 const router = express.Router();
 
@@ -11,6 +19,14 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
 
     if (!content) {
       return res.status(400).json({ error: 'Note content is required' });
+    }
+
+    if (isDatabaseDisabled) {
+      const newNote = createDummyNote(req.user!.user_id, title || 'Untitled', content);
+      return res.status(201).json({
+        message: 'Note created successfully (mock)',
+        note: newNote,
+      });
     }
 
     const noteId = await NoteModel.create({
@@ -43,6 +59,18 @@ router.get('/my-notes', authenticateToken, async (req: AuthRequest, res) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
     const offset = (page - 1) * limit;
 
+    if (isDatabaseDisabled) {
+      const notes = getDummyNotes(req.user!.user_id, limit, offset);
+      return res.json({
+        notes,
+        pagination: {
+          page,
+          limit,
+          hasMore: false,
+        },
+      });
+    }
+
     const notes = await NoteModel.findByUserId(req.user!.user_id, limit, offset);
 
     res.json({
@@ -67,6 +95,16 @@ router.get('/:noteId', authenticateToken, async (req: AuthRequest, res) => {
 
     if (isNaN(noteId)) {
       return res.status(400).json({ error: 'Invalid note ID' });
+    }
+
+    if (isDatabaseDisabled) {
+      const note = getDummyNoteById(req.user!.user_id, noteId);
+
+      if (!note) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+
+      return res.json({ note });
     }
 
     const note = await NoteModel.findById(noteId);
@@ -103,6 +141,20 @@ router.put('/:noteId', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     // Check if note exists and user owns it
+    if (isDatabaseDisabled) {
+      const existingNote = getDummyNoteById(req.user!.user_id, noteId);
+      if (!existingNote) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+
+      const updatedNote = updateDummyNote(existingNote, { title, content });
+
+      return res.json({
+        message: 'Note updated successfully (mock)',
+        note: updatedNote,
+      });
+    }
+
     const existingNote = await NoteModel.findById(noteId);
     if (!existingNote) {
       return res.status(404).json({ error: 'Note not found' });
@@ -138,6 +190,15 @@ router.delete('/:noteId', authenticateToken, async (req: AuthRequest, res) => {
 
     if (isNaN(noteId)) {
       return res.status(400).json({ error: 'Invalid note ID' });
+    }
+
+    if (isDatabaseDisabled) {
+      const existingNote = getDummyNoteById(req.user!.user_id, noteId);
+      if (!existingNote || !deleteDummyNote(noteId)) {
+        return res.status(404).json({ error: 'Note not found or access denied' });
+      }
+
+      return res.json({ message: 'Note deleted (mock)' });
     }
 
     const success = await NoteModel.delete(noteId, req.user!.user_id);

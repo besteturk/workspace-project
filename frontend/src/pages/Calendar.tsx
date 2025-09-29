@@ -18,10 +18,16 @@ import type { EventSummary } from "@/services/api";
 import { ApiError } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+
+const formatDateKey = (date: Date) =>
+   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+      date.getDate()
+   ).padStart(2, "0")}`;
 
 const Calendar = () => {
    const navigate = useNavigate();
-   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
+   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
    const [viewMode, setViewMode] = useState<"week" | "month">("week");
    const [events, setEvents] = useState<EventSummary[]>([]);
    const [loading, setLoading] = useState(false);
@@ -113,14 +119,35 @@ const Calendar = () => {
       }
    };
 
+   const weekStart = useMemo(() => {
+      const base = new Date(selectedDate);
+      const dayIndex = (base.getDay() + 6) % 7;
+      const start = new Date(base);
+      start.setDate(base.getDate() - dayIndex);
+      start.setHours(0, 0, 0, 0);
+      return start;
+   }, [selectedDate]);
+
+   const weekDates = useMemo(
+      () =>
+         Array.from({ length: 7 }, (_, index) => {
+            const date = new Date(weekStart);
+            date.setDate(weekStart.getDate() + index);
+            return date;
+         }),
+      [weekStart]
+   );
+
+   const todayKey = formatDateKey(new Date());
+
    const weeklyEvents = useMemo(() => {
-      const map = new Map<number, EventSummary[]>();
+      const map = new Map<string, EventSummary[]>();
       events.forEach((event) => {
          const date = new Date(event.start_time);
-         const dayIndex = (date.getDay() + 6) % 7;
-         const list = map.get(dayIndex) ?? [];
+         const key = formatDateKey(date);
+         const list = map.get(key) ?? [];
          list.push(event);
-         map.set(dayIndex, list);
+         map.set(key, list);
       });
       return map;
    }, [events]);
@@ -223,7 +250,7 @@ const Calendar = () => {
                      {viewMode === "week" ? (
                         <div className="grid grid-cols-8 gap-2">
                            {/* Time column */}
-                           <div className="grid space-y-12 place-items-center">
+                           <div className="grid space-y-12 pt-[52px] place-items-center">
                               <div className="h-5" />
                               {timeSlots.map((time) => (
                                  <div
@@ -236,60 +263,75 @@ const Calendar = () => {
                            </div>
 
                            {/* Day columns */}
-                           {weekDays.map((day, dayIndex) => (
-                              <div
-                                 key={day}
-                                 className="space-y-1"
-                              >
-                                 <div className="h-8 pb-12 text-center">
-                                    <div className="text-sm font-medium text-foreground">{day}</div>
-                                    <div
-                                       className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs ${dayIndex === 2
-                                          ? "bg-primary text-primary-foreground"
-                                          : "text-muted-foreground"
-                                          }`}
+                           {weekDays.map((day, dayIndex) => {
+                              const date = weekDates[dayIndex];
+                              const dateKey = formatDateKey(date);
+                              const isToday = dateKey === todayKey;
+                              const isSelected = date.toDateString() === selectedDate.toDateString();
+
+                              return (
+                                 <div
+                                    key={day}
+                                    className="space-y-1"
+                                 >
+                                    <button
+                                       type="button"
+                                       onClick={() => setSelectedDate(new Date(date))}
+                                       className="flex w-full flex-col items-center gap-1 pb-12 text-center focus:outline-none"
                                     >
-                                       {18 + dayIndex}
+                                       <div className="text-sm font-medium text-foreground">{day}</div>
+                                       <div
+                                          className={cn(
+                                             "mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors",
+                                             isSelected
+                                                ? "bg-primary text-primary-foreground"
+                                                : isToday
+                                                   ? "border border-primary text-primary"
+                                                   : "text-muted-foreground"
+                                          )}
+                                       >
+                                          {date.getDate()}
+                                       </div>
+                                    </button>
+
+                                    {/* Events for this day */}
+                                    <div className="space-y-12">
+                                       {timeSlots.map((time, timeIndex) => {
+                                          const currentHour = 8 + timeIndex;
+                                          const eventsForDay = weeklyEvents.get(dateKey) ?? [];
+                                          const matchingEvents = eventsForDay.filter((event) => {
+                                             const eventStart = new Date(event.start_time);
+                                             return eventStart.getHours() === currentHour;
+                                          });
+
+                                          return (
+                                             <div
+                                                key={time}
+                                                className="relative h-12 rounded border border-border"
+                                             >
+                                                {matchingEvents.map((event) => (
+                                                   <div
+                                                      key={event.event_id}
+                                                      className="absolute inset-x-1 top-1 rounded bg-primary p-1 text-xs text-primary-foreground"
+                                                   >
+                                                      <div className="font-medium">{event.title}</div>
+                                                      <div className="text-[10px] opacity-80">
+                                                         {new Date(
+                                                            event.start_time
+                                                         ).toLocaleTimeString([], {
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                         })}
+                                                      </div>
+                                                   </div>
+                                                ))}
+                                             </div>
+                                          );
+                                       })}
                                     </div>
                                  </div>
-
-                                 {/* Events for this day */}
-                                 <div className="space-y-12">
-                                    {timeSlots.map((time, timeIndex) => {
-                                       const currentHour = 8 + timeIndex;
-                                       const eventsForDay = weeklyEvents.get(dayIndex) ?? [];
-                                       const matchingEvents = eventsForDay.filter((event) => {
-                                          const eventStart = new Date(event.start_time);
-                                          return eventStart.getHours() === currentHour;
-                                       });
-
-                                       return (
-                                          <div
-                                             key={time}
-                                             className="relative h-12 rounded border border-border"
-                                          >
-                                             {matchingEvents.map((event) => (
-                                                <div
-                                                   key={event.event_id}
-                                                   className="absolute inset-x-1 top-1 rounded bg-primary p-1 text-xs text-primary-foreground"
-                                                >
-                                                   <div className="font-medium">{event.title}</div>
-                                                   <div className="text-[10px] opacity-80">
-                                                      {new Date(
-                                                         event.start_time
-                                                      ).toLocaleTimeString([], {
-                                                         hour: "2-digit",
-                                                         minute: "2-digit",
-                                                      })}
-                                                   </div>
-                                                </div>
-                                             ))}
-                                          </div>
-                                       );
-                                    })}
-                                 </div>
-                              </div>
-                           ))}
+                              );
+                           })}
                         </div>
                      ) : (
                         <div className="grid grid-cols-7 gap-1">
