@@ -13,6 +13,10 @@ import type { ConversationParticipant, ConversationSummary, MessageSummary } fro
 import { ApiError } from "@/lib/api";
 import { getStoredUser, logout } from "@/lib/auth";
 
+// Messaging renders an inbox-style experience backed by the messaging endpoints:
+//   - left pane lists conversations (with search + unread counts)
+//   - right pane shows messages and lets users reply in real time.
+
 const relativeTimeFormat = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 const TIME_RANGES: Array<{ unit: Intl.RelativeTimeFormatUnit; minutes: number }> = [
@@ -24,6 +28,7 @@ const TIME_RANGES: Array<{ unit: Intl.RelativeTimeFormatUnit; minutes: number }>
    { unit: "minute", minutes: 1 },
 ];
 
+// Shared formatting helpers keep timestamps consistent across the list and message bubbles.
 function formatRelativeTime(timestamp?: string) {
    if (!timestamp) return "";
 
@@ -106,8 +111,10 @@ const MESSAGE_RETRY_INTERVAL_MS = 5000;
 
 const Messaging = () => {
    const navigate = useNavigate();
+   // Search + selection state for the conversations pane.
    const [searchTerm, setSearchTerm] = useState("");
    const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
+   // API responses.
    const [conversations, setConversations] = useState<ConversationSummary[]>([]);
    const [messages, setMessages] = useState<MessageSummary[]>([]);
    const [newMessage, setNewMessage] = useState("");
@@ -123,6 +130,7 @@ const Messaging = () => {
    const currentUser = useMemo(() => getStoredUser(), []);
    const currentUserId = currentUser?.user_id;
 
+   // Abort any in-flight requests when the component unmounts.
    useEffect(() => {
       return () => {
          controllerRef.current?.abort();
@@ -133,6 +141,7 @@ const Messaging = () => {
       };
    }, []);
 
+   // Initial conversations load; also keeps selection stable when the list refreshes.
    useEffect(() => {
       const controller = new AbortController();
 
@@ -180,6 +189,7 @@ const Messaging = () => {
       return () => controller.abort();
    }, [navigate]);
 
+   // Whenever the selected conversation changes we fetch its messages and reuse the API retry logic.
    useEffect(() => {
       controllerRef.current?.abort();
       if (retryTimeoutRef.current) {
@@ -279,6 +289,7 @@ const Messaging = () => {
       return conversations.find((conversation) => conversation.conversation_id === selectedConversationId) ?? null;
    }, [conversations, selectedConversationId]);
 
+   // Determines whether each of the user's outbound messages has been read so we can show the correct icon.
    const outboundMessageReadStatus = useMemo(() => {
       const statusMap = new Map<number, boolean>();
 
@@ -310,6 +321,7 @@ const Messaging = () => {
       ? getConversationSubtitle(selectedConversation, currentUserId)
       : "";
 
+   // Submitting the form posts the new message, then refreshes both messages and the conversation list.
    const handleSendMessage = async (event?: React.FormEvent) => {
       event?.preventDefault();
 

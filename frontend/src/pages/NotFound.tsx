@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
+// Simple 404 screen that logs missing routes to the console and offers recovery links.
+
 const NotFound = () => {
   const location = useLocation();
 

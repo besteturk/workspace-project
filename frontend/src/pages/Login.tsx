@@ -7,6 +7,8 @@ import { useNavigate } from "react-router-dom";
 import { login as loginRequest } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 
+// Minimal email/password login screen that reuses auth helpers for token storage.
+
 const Login = () => {
    const [email, setEmail] = useState("");
    const [password, setPassword] = useState("");
@@ -14,6 +16,7 @@ const Login = () => {
    const [error, setError] = useState<string | null>(null);
    const navigate = useNavigate();
 
+   // Submit handler uses the shared auth client; errors are surfaced inline.
    const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       setError(null);
@@ -26,9 +29,9 @@ const Login = () => {
          const message =
             err instanceof ApiError
                ? typeof err.data === "object" &&
-                 err.data !== null &&
-                 "error" in err.data &&
-                 typeof (err.data as { error?: string }).error === "string"
+                  err.data !== null &&
+                  "error" in err.data &&
+                  typeof (err.data as { error?: string }).error === "string"
                   ? (err.data as { error: string }).error ?? err.message
                   : err.message
                : "Login failed. Please try again.";

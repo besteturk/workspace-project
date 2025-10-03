@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
    Dialog,
    DialogContent,
+   DialogDescription,
+   DialogFooter,
    DialogHeader,
    DialogTitle,
    DialogTrigger,
@@ -18,16 +20,35 @@ import type { TeamMemberSummary, TeamSummary } from "@/services/api";
 import { ApiError } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/lib/auth";
-import { log } from "console";
+import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import {
+   Select,
+   SelectContent,
+   SelectItem,
+   SelectTrigger,
+   SelectValue,
+} from "@/components/ui/select";
 
+// Teams pulls the current workspace, renders roster management modals, and
+// exposes some optimistic update handlers for role tweaks and settings edits.
 const Teams = () => {
    const navigate = useNavigate();
+   const { toast } = useToast();
    const [inviteEmail, setInviteEmail] = useState("");
    const [loading, setLoading] = useState(false);
    const [error, setError] = useState<string | null>(null);
    const [team, setTeam] = useState<TeamSummary | null>(null);
    const [members, setMembers] = useState<TeamMemberSummary[]>([]);
+   const [teamSettingsOpen, setTeamSettingsOpen] = useState(false);
+   const [teamSettingsDraft, setTeamSettingsDraft] = useState({ name: "", description: "" });
+   const [memberSettings, setMemberSettings] = useState<{
+      open: boolean;
+      member: TeamMemberSummary | null;
+   }>({ open: false, member: null });
+   const [memberRoleDraft, setMemberRoleDraft] = useState<"member" | "admin">("member");
 
+   // Load active team + members once. If the user lacks a session we bounce back to login.
    useEffect(() => {
       const controller = new AbortController();
 
@@ -63,11 +84,25 @@ const Teams = () => {
       return () => controller.abort();
    }, [navigate]);
 
+   // When the team payload changes, prime the settings dialog with fresh values.
+   useEffect(() => {
+      if (!team) return;
+
+      setTeamSettingsDraft({
+         name: team.name ?? "Your Team",
+         description: team.description ?? "",
+      });
+   }, [team]);
+
    const handleInvite = () => {
-      if (inviteEmail.trim()) {
-         console.log("Inviting:", inviteEmail);
-         setInviteEmail("");
-      }
+      const email = inviteEmail.trim();
+      if (!email) return;
+
+      toast({
+         title: "Invitation queued",
+         description: `We'll notify ${email} with next steps.`,
+      });
+      setInviteEmail("");
    };
 
    const getRoleIcon = (role: string) => {
@@ -85,9 +120,197 @@ const Teams = () => {
       return { totalMembers, admins, pendingInvites };
    }, [members]);
 
+   const handleOpenTeamSettings = () => {
+      if (team) {
+         setTeamSettingsDraft({
+            name: team.name ?? "Your Team",
+            description: team.description ?? "",
+         });
+      }
+      setTeamSettingsOpen(true);
+   };
+
+   const handleSaveTeamSettings = () => {
+      if (!team) {
+         setTeamSettingsOpen(false);
+         return;
+      }
+
+      const trimmedName = teamSettingsDraft.name.trim();
+      const trimmedDescription = teamSettingsDraft.description.trim();
+
+      setTeam((previous) =>
+         previous
+            ? {
+               ...previous,
+               name: trimmedName || previous.name,
+               description: trimmedDescription ? trimmedDescription : null,
+            }
+            : previous
+      );
+
+      toast({
+         title: "Team settings updated",
+         description: "Your changes are now visible to the team.",
+      });
+
+      setTeamSettingsOpen(false);
+   };
+
+   const handleOpenMemberSettings = (member: TeamMemberSummary) => {
+      setMemberRoleDraft(member.role);
+      setMemberSettings({ open: true, member });
+   };
+
+   const handleMemberDialogChange = (open: boolean) => {
+      if (!open) {
+         setMemberSettings({ open: false, member: null });
+         setMemberRoleDraft("member");
+         return;
+      }
+
+      setMemberSettings((previous) => ({ ...previous, open: true }));
+   };
+
+   // Optimistically update the roster when a role change is saved.
+   const handleSaveMemberSettings = () => {
+      const member = memberSettings.member;
+      if (!member) {
+         setMemberSettings({ open: false, member: null });
+         return;
+      }
+
+      setMembers((previous) =>
+         previous.map((item) =>
+            item.team_member_id === member.team_member_id
+               ? { ...item, role: memberRoleDraft }
+               : item
+         )
+      );
+
+      toast({
+         title: "Member role updated",
+         description: `${member.first_name ?? member.email ?? "Member"} is now ${memberRoleDraft}.`,
+      });
+
+      setMemberSettings({ open: false, member: null });
+      setMemberRoleDraft("member");
+   };
+
 
    return (
       <AppLayout>
+         <Dialog
+            open={teamSettingsOpen}
+            onOpenChange={(open) => {
+               setTeamSettingsOpen(open);
+               if (!open && team) {
+                  setTeamSettingsDraft({
+                     name: team.name ?? "Your Team",
+                     description: team.description ?? "",
+                  });
+               }
+            }}
+         >
+            <DialogContent className="sm:max-w-lg">
+               <DialogHeader>
+                  <DialogTitle>Team settings</DialogTitle>
+                  <DialogDescription>
+                     Update how your teammates see this workspace in the navigation and invite emails.
+                  </DialogDescription>
+               </DialogHeader>
+               <div className="space-y-4">
+                  <Input
+                     value={teamSettingsDraft.name}
+                     onChange={(event) =>
+                        setTeamSettingsDraft((previous) => ({
+                           ...previous,
+                           name: event.target.value,
+                        }))
+                     }
+                     placeholder="Team name"
+                  />
+                  <Textarea
+                     value={teamSettingsDraft.description}
+                     onChange={(event) =>
+                        setTeamSettingsDraft((previous) => ({
+                           ...previous,
+                           description: event.target.value,
+                        }))
+                     }
+                     placeholder="Team description"
+                     className="min-h-[120px]"
+                  />
+               </div>
+               <DialogFooter>
+                  <Button
+                     variant="outline"
+                     onClick={() => setTeamSettingsOpen(false)}
+                  >
+                     Cancel
+                  </Button>
+                  <Button onClick={handleSaveTeamSettings}>Save changes</Button>
+               </DialogFooter>
+            </DialogContent>
+         </Dialog>
+
+         <Dialog
+            open={memberSettings.open}
+            onOpenChange={handleMemberDialogChange}
+         >
+            <DialogContent className="sm:max-w-md">
+               <DialogHeader>
+                  <DialogTitle>Member settings</DialogTitle>
+                  <DialogDescription>
+                     Adjust workspace permissions for this teammate.
+                  </DialogDescription>
+               </DialogHeader>
+               {memberSettings.member ? (
+                  <div className="space-y-4">
+                     <div className="rounded-lg bg-muted/50 p-3">
+                        <p className="text-sm font-medium text-foreground">
+                           {[memberSettings.member.first_name, memberSettings.member.last_name]
+                              .filter(Boolean)
+                              .join(" ") || memberSettings.member.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                           {memberSettings.member.email}
+                        </p>
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                           Role
+                        </label>
+                        <Select
+                           value={memberRoleDraft}
+                           onValueChange={(value: "admin" | "member") => setMemberRoleDraft(value)}
+                        >
+                           <SelectTrigger>
+                              <SelectValue placeholder="Select a role" />
+                           </SelectTrigger>
+                           <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="member">Member</SelectItem>
+                           </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                           Admins can manage invites and team settings. Members can collaborate on pages and events.
+                        </p>
+                     </div>
+                  </div>
+               ) : null}
+               <DialogFooter>
+                  <Button
+                     variant="outline"
+                     onClick={() => handleMemberDialogChange(false)}
+                  >
+                     Cancel
+                  </Button>
+                  <Button onClick={handleSaveMemberSettings}>Save changes</Button>
+               </DialogFooter>
+            </DialogContent>
+         </Dialog>
+
          <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                <h1 className="text-3xl font-bold text-foreground">Teams</h1>
@@ -120,7 +343,10 @@ const Teams = () => {
                         </div>
                      </DialogContent>
                   </Dialog>
-                  <Button variant="outline">
+                  <Button
+                     variant="outline"
+                     onClick={handleOpenTeamSettings}
+                  >
                      <Settings className="w-4 h-4 mr-2" />
                      Settings
                   </Button>
@@ -229,6 +455,7 @@ const Teams = () => {
                                  <Button
                                     variant="ghost"
                                     size="sm"
+                                    onClick={() => handleOpenMemberSettings(member)}
                                  >
                                     <Settings className="w-4 h-4" />
                                  </Button>

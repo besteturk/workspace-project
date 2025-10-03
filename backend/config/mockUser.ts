@@ -15,14 +15,18 @@ const toNumber = (value?: string | null, fallback = 900000): number => {
 
 export const mockUserProfile = {
   user_id: toNumber(process.env.MOCK_USER_ID, 900000),
-  first_name: process.env.MOCK_USER_FIRST_NAME || 'Demo',
-  last_name: process.env.MOCK_USER_LAST_NAME || 'User',
-  email: process.env.MOCK_USER_EMAIL || 'demo@example.com',
-  pfp_url: process.env.MOCK_USER_PFP_URL || null,
+  first_name: process.env.MOCK_USER_FIRST_NAME || 'Avery',
+  last_name: process.env.MOCK_USER_LAST_NAME || 'Stone',
+  email: process.env.MOCK_USER_EMAIL || 'avery.stone@example.com',
+  pfp_url:
+    process.env.MOCK_USER_PFP_URL ||
+    'https://avatars.githubusercontent.com/u/9919?s=200&v=4',
   role: parseRole(process.env.MOCK_USER_ROLE),
-  job_title: process.env.MOCK_USER_JOB_TITLE || null,
-  location: process.env.MOCK_USER_LOCATION || null,
-  bio: process.env.MOCK_USER_BIO || null,
+  job_title: process.env.MOCK_USER_JOB_TITLE || 'Lead Product Designer',
+  location: process.env.MOCK_USER_LOCATION || 'San Francisco, CA',
+  bio:
+    process.env.MOCK_USER_BIO ||
+    'Design leader focused on crafting end-to-end collaboration workflows and empowering teams with thoughtful systems.',
 } as const;
 
 export const mockUserCredentials = {

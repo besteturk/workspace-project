@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,14 @@ import { CalendarIcon, Plus, Clock, Users } from "lucide-react";
 import { api } from "@/services/api";
 import type { EventSummary } from "@/services/api";
 import { ApiError } from "@/lib/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
+// Calendar aggregates events for the current workspace and lets the user schedule
+// new ones via a modal dialog. It supports a week and month view backed by the
+// same in-memory event list.
 
 const formatDateKey = (date: Date) =>
    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
@@ -27,11 +32,17 @@ const formatDateKey = (date: Date) =>
 
 const Calendar = () => {
    const navigate = useNavigate();
+   const { toast } = useToast();
+   // Router query parameters allow deep-linking to the “create event” dialog.
+   const [searchParams, setSearchParams] = useSearchParams();
+   // Week view defaults to “today” to help orient the user quickly.
    const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
    const [viewMode, setViewMode] = useState<"week" | "month">("week");
+   // Backend event payloads
    const [events, setEvents] = useState<EventSummary[]>([]);
    const [loading, setLoading] = useState(false);
    const [error, setError] = useState<string | null>(null);
+   const [formError, setFormError] = useState<string | null>(null);
 
    const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
    const timeSlots = Array.from({ length: 12 }, (_, i) => `${8 + i}:00`);
@@ -44,6 +55,9 @@ const Calendar = () => {
       assignTo: "",
    });
 
+   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+
+   // Bootstrap events on mount; abort if the component unmounts mid-request.
    useEffect(() => {
       const controller = new AbortController();
 
@@ -78,9 +92,39 @@ const Calendar = () => {
       return () => controller.abort();
    }, [navigate]);
 
+   // Sync dialog open state with the URL so `?newEvent=1` can toggle it.
+   const handleDialogChange = useCallback(
+      (open: boolean) => {
+         setCreateDialogOpen(open);
+
+         if (!open) {
+            setFormError(null);
+            setNewEvent({ title: "", description: "", date: "", time: "", assignTo: "" });
+
+            const nextParams = new URLSearchParams(searchParams);
+            if (nextParams.has("newEvent")) {
+               nextParams.delete("newEvent");
+               setSearchParams(nextParams, { replace: true });
+            }
+         }
+      },
+      [searchParams, setSearchParams]
+   );
+
+   const openCreateDialog = useCallback(() => {
+      setFormError(null);
+      setCreateDialogOpen(true);
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("newEvent", "1");
+      setSearchParams(nextParams, { replace: true });
+   }, [searchParams, setSearchParams]);
+
+   // Form submission wires directly to the POST endpoint and refreshes the list
+   // with the response payload for immediate feedback.
    const handleCreateEvent = async () => {
       if (!newEvent.title || !newEvent.date || !newEvent.time) {
-         setError("Title, date and time are required");
+         setFormError("Title, date, and time are required");
          return;
       }
 
@@ -90,6 +134,7 @@ const Calendar = () => {
       try {
          setLoading(true);
          setError(null);
+         setFormError(null);
          const response = await api.events.create(
             {
                title: newEvent.title,
@@ -101,7 +146,11 @@ const Calendar = () => {
             {}
          );
          setEvents(response.events);
-         setNewEvent({ title: "", description: "", date: "", time: "", assignTo: "" });
+         toast({
+            title: "Event created",
+            description: `${newEvent.title} scheduled for ${start.toLocaleString()}`,
+         });
+         handleDialogChange(false);
       } catch (err) {
          console.error("Failed to create event", err);
          if (err instanceof ApiError && err.status === 401) {
@@ -118,6 +167,24 @@ const Calendar = () => {
          setLoading(false);
       }
    };
+   // Auto-open the dialog if someone navigates in with ?newEvent=1.
+   useEffect(() => {
+      const shouldOpen = searchParams.get("newEvent");
+      if (shouldOpen) {
+         setCreateDialogOpen(true);
+      }
+   }, [searchParams]);
+
+   // When the dialog opens we seed the date input with the currently selected day.
+   useEffect(() => {
+      if (!isCreateDialogOpen) return;
+
+      setNewEvent((previous) => ({
+         ...previous,
+         date: previous.date || formatDateKey(selectedDate),
+      }));
+   }, [isCreateDialogOpen, selectedDate]);
+
 
    const weekStart = useMemo(() => {
       const base = new Date(selectedDate);
@@ -140,6 +207,7 @@ const Calendar = () => {
 
    const todayKey = formatDateKey(new Date());
 
+   // Group events by YYYY-MM-DD string so we can render them efficiently per cell.
    const weeklyEvents = useMemo(() => {
       const map = new Map<string, EventSummary[]>();
       events.forEach((event) => {
@@ -178,9 +246,12 @@ const Calendar = () => {
                         Month
                      </button>
                   </div>
-                  <Dialog>
+                  <Dialog open={isCreateDialogOpen} onOpenChange={handleDialogChange}>
                      <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary/90">
+                        <Button
+                           className="bg-primary hover:bg-primary/90"
+                           onClick={openCreateDialog}
+                        >
                            <Plus className="w-4 h-4 mr-2" />
                            New Event
                         </Button>
@@ -225,6 +296,9 @@ const Calendar = () => {
                                  setNewEvent({ ...newEvent, assignTo: e.target.value })
                               }
                            />
+                           {formError && (
+                              <p className="text-sm text-destructive">{formError}</p>
+                           )}
                            <Button
                               onClick={handleCreateEvent}
                               className="w-full bg-primary hover:bg-primary/90"
@@ -238,6 +312,7 @@ const Calendar = () => {
             </div>
 
             {/* Calendar Grid */}
+            {/* Main grid switches between the detailed week view and a simplified month overview */}
             <Card className="flex flex-1 flex-col overflow-hidden shadow-card">
                <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -294,7 +369,7 @@ const Calendar = () => {
                                        </div>
                                     </button>
 
-                                    {/* Events for this day */}
+                                    {/* Time slots for the chosen day; each renders matching events */}
                                     <div className="space-y-12">
                                        {timeSlots.map((time, timeIndex) => {
                                           const currentHour = 8 + timeIndex;
