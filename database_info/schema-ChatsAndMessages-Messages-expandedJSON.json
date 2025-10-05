@@ -1,0 +1,127 @@
+{
+  "type": "object",
+  "x-bsonType": "object",
+  "required": [
+    "_id",
+    "contents",
+    "isRead",
+    "receiver_id",
+    "sender_id",
+    "sent_at",
+    "timezoneOffset"
+  ],
+  "properties": {
+    "_id": {
+      "$ref": "#/$defs/ObjectId",
+      "x-bsonType": "objectId",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        "68e24aa85df4cc8869ee549d"
+      ]
+    },
+    "contents": {
+      "type": "string",
+      "x-bsonType": "string",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        "Deneme mesaj1"
+      ]
+    },
+    "isRead": {
+      "type": "boolean",
+      "x-bsonType": "bool",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        true
+      ]
+    },
+    "receiver_id": {
+      "$ref": "#/$defs/ObjectId",
+      "x-bsonType": "objectId",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        "68e2465f5df4cc8869ee549a"
+      ]
+    },
+    "sender_id": {
+      "type": "integer",
+      "x-bsonType": "int",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        1000006
+      ]
+    },
+    "sent_at": {
+      "$ref": "#/$defs/Date",
+      "x-bsonType": "date",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        "2025-10-05T10:38:32.582Z"
+      ]
+    },
+    "timezoneOffset": {
+      "type": "integer",
+      "x-bsonType": "int",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        -180
+      ]
+    }
+  },
+  "$defs": {
+    "ObjectId": {
+      "type": "object",
+      "properties": {
+        "$oid": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{24}$"
+        }
+      },
+      "required": [
+        "$oid"
+      ],
+      "additionalProperties": false
+    },
+    "Date": {
+      "type": "object",
+      "properties": {
+        "$date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "$date"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

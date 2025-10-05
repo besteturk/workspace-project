@@ -1,0 +1,97 @@
+{
+  "type": "object",
+  "x-bsonType": "object",
+  "required": [
+    "_id",
+    "chat_type",
+    "members",
+    "title"
+  ],
+  "properties": {
+    "_id": {
+      "$ref": "#/$defs/ObjectId",
+      "x-bsonType": "objectId",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        "68e2465f5df4cc8869ee549a"
+      ]
+    },
+    "chat_type": {
+      "type": "string",
+      "x-bsonType": "string",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        "group chat"
+      ]
+    },
+    "members": {
+      "type": "array",
+      "x-bsonType": "array",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "items": {
+        "type": "array",
+        "x-bsonType": "array",
+        "x-metadata": {
+          "probability": 1,
+          "count": 2
+        },
+        "items": {
+          "type": "string",
+          "x-bsonType": "string",
+          "x-metadata": {
+            "hasDuplicates": true,
+            "probability": 1,
+            "count": 6
+          },
+          "x-sampleValues": [
+            "Deniz Karlı",
+            "1000006",
+            "admin",
+            "Hanife Kübra Kaya",
+            "1000005",
+            "admin"
+          ]
+        }
+      }
+    },
+    "title": {
+      "type": "string",
+      "x-bsonType": "string",
+      "x-metadata": {
+        "hasDuplicates": false,
+        "probability": 1,
+        "count": 1
+      },
+      "x-sampleValues": [
+        "Team Thia"
+      ]
+    }
+  },
+  "$defs": {
+    "ObjectId": {
+      "type": "object",
+      "properties": {
+        "$oid": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{24}$"
+        }
+      },
+      "required": [
+        "$oid"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

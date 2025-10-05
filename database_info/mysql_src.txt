@@ -1,0 +1,92 @@
+/* ÖNEMLİ NOT: Bu database komutları ve comment syntax'i mysql 8.0 workbench community edition'da yazılmıştır. Farklı arayüzlerde birkaç syntax farklı olabilir.
+Yine de çoğunlukla bir sorun olmaması lazım. Direkt olarak bir database'in içine */
+
+
+
+
+CREATE TABLE Users(
+    user_id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    pfp_url VARCHAR(255),
+    role ENUM('user','admin') DEFAULT 'user'
+)AUTO_INCREMENT = 10000000;
+
+-- if a user is deleted, its notes are automatically deleted
+CREATE TABLE Notes(
+    note_id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+    noter_id INT NOT NULL,
+    title VARCHAR(255) DEFAULT 'Untitled',
+    content TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    termination_marked TIMESTAMP,
+    FOREIGN KEY(noter_id) REFERENCES Users(user_id) ON DELETE CASCADE
+)AUTO_INCREMENT = 20000000;
+
+
+/* to check the notes by their note_id and delete expired notes
+an expired note is a note that was marked for termination at least 7 days before the current time */
+SET GLOBAL event_scheduler = ON;
+
+/* check every 5 minutes,
+ if termination_marked isnt null and its value was recorded 7 days before checking, delete it. 
+ delete a maximum of 1000 notes at a time. */
+CREATE EVENT IF NOT EXISTS purge_expired_notes
+ON SCHEDULE EVERY 5 MINUTE
+DO
+  DELETE FROM Notes
+  WHERE termination_marked IS NOT NULL AND termination_marked <= UTC_TIMESTAMP() - INTERVAL 7 DAY
+  ORDER BY created_at
+  LIMIT 1000;
+
+
+
+
+-- when created, it automatically holds the current time value as a timestamp
+CREATE TABLE Events(
+event_id INT PRIMARY KEY AUTO_INCREMENT,
+title VARCHAR(255) DEFAULT "Event",
+description TEXT,
+start_time TIMESTAMP NOT NULL,
+end_time TIMESTAMP NOT NULL,
+creator_id INT NOT NULL,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+FOREIGN KEY(creator_id) REFERENCES Users(user_id)
+)AUTO_INCREMENT = 30000000;
+
+/* list of attendees for each event and what events theyre in.
+ the composite primary key allows one user to be a part of different events and one event to be attended by different users.
+ the composite primary key also doesnt allow the same user to attend the same event multiple times.
+ ON DELETE CASCADE: if a specific user or event is deleted, the table adjusts itself automatically. */
+CREATE TABLE Attendees(
+attendee_id INT NOT NULL,
+event_id INT NOT NULL,
+FOREIGN KEY(attendee_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+FOREIGN KEY(event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
+PRIMARY KEY(attendee_id, event_id)
+);
+
+CREATE TABLE Teams(
+team_id INT PRIMARY KEY AUTO_INCREMENT,
+team_name VARCHAR(255),
+team_description TEXT,
+created_by INT NOT NULL,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+leader_id INT UNIQUE NOT NULL,
+FOREIGN KEY(leader_id) REFERENCES Users(user_id),
+FOREIGN KEY(created_by) REFERENCES Users(user_id)
+)AUTO_INCREMENT = 40000000;
+
+/* composite primary key allows a user to be a part of multiple teams and allows a team to be joined by multiple users.
+ ON DELETE CASCADE: if a team or a user is deleted, the table adjusts itself automatically */
+CREATE TABLE TeamMembers(
+member_id INT NOT NULL,
+team_id INT NOT NULL,
+PRIMARY KEY(member_id, team_id),
+is_team_leader BOOLEAN DEFAULT 0,
+FOREIGN KEY(member_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+FOREIGN KEY(team_id) REFERENCES Teams(team_id) ON DELETE CASCADE
+);
+

@@ -1,0 +1,107 @@
+/*ÖNEMLİ NOT: Bu database, collection komutları ve comment syntax'i 
+mongoshell üzerinde çalıştırılacak şekilde hazırlanmıştır. Her komut satırı "//komut_satırı_açıklaması" şeklinde comment'lerle ayrılmıştır.*/
+
+//mongoshell üzerinde database'i yaratmak için
+use ChatsAndMessages //boş bir database oluşturur ama aşağıdaki collection'lar girilene kadar yaratmaz.
+
+//Chats adlı collection'ı yaratma ve içine yazılan document'ları kontrol eden validation komutları
+db.createCollection("Chats", //db name
+{
+ validator: { // making sure that the collection receives the data in a correct format
+  $jsonSchema: {
+    bsonType: 'object',
+    required: [ // requires documents to have the following values
+      'title', // name of the group chat
+      'members', // list of the users who are a part of this group chat
+      'chat_type' // enumerator that defines if this chat is a group chat or a direct message
+    ],
+    properties: {
+      title: {
+        bsonType: 'string',
+        description: 'The title must be a string'
+      },
+      members: {
+        bsonType: 'array',
+        minItems: 2,
+        description: 'Each members list must have at least two member credentials held as arrays, each member credential array must have the following properties in that order: User name, unique user id, role of the user on the server',
+        items: {
+          bsonType: 'array',
+          minItems: 3,
+          maxItems: 3,
+          items: [
+            {
+              bsonType: 'string'
+            },
+            {
+              bsonType: 'string'
+            },
+            {
+              bsonType: 'string',
+              'enum': [
+                'user',
+                'admin'
+              ]
+            }
+          ]
+        }
+      },
+      chat_type: {
+        'enum': [
+          'dm',
+          'group chat'
+        ],
+        description: 'Must be either personal chat(dm) or a group chat'
+      }
+    }
+  }
+},
+ validationLevel: "strict", // applies the validation rules to all inserts and updates
+ validationAction: "error" // returns an error if an invalid insert or update happens
+})
+
+// Messages adlı collection'ı yaratma ve içine yazılan document'ları kontrol eden validation komutları. Çalıştırmadan önce ChatsAndMessages database'inde olduğunuza emin olunuz.
+db.createCollection("Messages", {
+validator: {
+  $jsonSchema: {
+    bsonType: 'object',
+    required: [
+      'sender_id',
+      'receiver_id',
+      'contents',
+      'sent_at',
+      'isRead',
+      'timezoneOffset'
+    ],
+    properties: {
+      sender_id: {
+        bsonType: 'int',
+        description: 'sender_id must be the id of the sender in integer format'
+      },
+      receiver_id: {
+        bsonType: 'objectId',
+        description: 'receiver_id must be the ObjectId of the chat hat is receiving this message'
+      },
+      contents: {
+        bsonType: 'string',
+        description: 'contents must be a string'
+      },
+      sent_at: {
+        bsonType: 'date',
+        description: 'sent_at must be a date'
+      },
+      isRead: {
+        bsonType: 'bool',
+        description: 'isRead determines whether all of the chat members have seen this message. It represents this as a boolean'
+      },
+      /*The number of minutes returned by getTimezoneOffset() is positive
+      if the local time zone is behind UTC, and negative if the local time zone is ahead of UTC. */
+      timezoneOffset: {
+        bsonType: 'int',
+        description: 'timezoneOffset holds the time difference between UTC and the local timezone in minutes as an integer.(Example: For timezone GMT(+3.00), the offset is going to be -180) '
+      }
+    }
+  }
+},
+ validationLevel: "strict",
+ validationAction: "error"
+})
